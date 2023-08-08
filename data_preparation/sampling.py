@@ -67,6 +67,7 @@ def load_uvp5(path):
     df['object_id'] = df['object_id'].astype(int)
     df['path'] = path + '\\images\\' + df['profile_id'].astype(str) + '\\' + df['object_id'].astype(str) + '.jpg'
     df['relative_path'] = 'output\\' + df['object_id'].astype(str) + '.jpg'
+    df['relative_path'] = df['relative_path'].str.replace(r'\\', '/')
 
     return df
 
@@ -111,6 +112,13 @@ def load_uvp6_from_csv(csv_path):
     df['groundtruth'] = df['groundtruth'].str.replace('Creseis acicula', 'Creseis')
     df['groundtruth'] = df['groundtruth'].str.replace('antenna<Calanoida', 'Calanoida')
     df = df[df['groundtruth'] != 'Botrynema']
+
+    df = df.rename(columns={'depth [m]': 'depth', })
+    df = df.rename(columns={'latitude [deg]': 'lat', })
+    df = df.rename(columns={'longitude [deg]': 'lon', })
+    df = df.rename(columns={'timestamp [s]': 'datetime', })
+    df['profile_id'] = 0
+    df['object_id'] = 0
 
     # create path column uvp6
     df['uvp_model'] = ['UVP6'] * len(df)
