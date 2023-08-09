@@ -3,11 +3,24 @@ import numpy as np
 from pathlib import Path
 import datetime
 import sys
+from configs.config import Configuration
+from tools import Console
 from sampling_tools import sampling_uniform, sampling_stratified, sampling_fixed_number
 from sampling_tools import load_uvp5, load_uvp6, load_uvp6_from_csv, copy_image_from_df, report_csv
 
 
-def sampling(dir_uvp5, dir_uvp6, dir_output, which_uvp, class_type, sampling_method, target_size):
+def sampling(config_path):
+
+    Console.info("Training started at", datetime.datetime.now())
+    # config = Configuration(configuration_path, force_overwrite)
+    # cg = config.geoclr_training
+
+    config = Configuration("config_path")
+
+    # Accessing configuration values
+    print("Data Path:", config.sampling.path_uvp5)
+    print("Data Path:", config.sampling.path_uvp6)
+# dir_uvp5, dir_uvp6, dir_output, which_uvp, class_type, sampling_method, target_size
 
     if which_uvp == 0:
         # load uvp5
@@ -103,14 +116,14 @@ if __name__ == "__main__":
     dir_output = r'D:\mojmas\files\data\result_sampling'
 
     which_uvp = 1  # '0' uvp5, '1' uvp6, '2' both uvp merge
-    class_type = 1  # '0' means 13 class or '1' means 25 classes
+    class_type = 0  # '0' means 13 class or '1' means 25 classes
 
     # '0' sample fixed number, '1' sample uniform percent from each class, '2' sample stratified from each uvps
     sampling_method = 0
 
     # if sampling fixed numbers
-    sampling_percent_uvp5 = 10
-    sampling_percent_uvp6 = 10
+    sampling_percent_uvp5 = 100
+    sampling_percent_uvp6 = 100
 
     # # if sampling stratified
     # sampling_percent_uvp5 = 0.0051  # all=9,884,798

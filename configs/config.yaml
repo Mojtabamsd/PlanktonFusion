@@ -10,3 +10,8 @@ sampling:
   sampling_percent_uvp5: 100
   sampling_percent_uvp6: 100
   target_size: [227, 227]  #image target size
+
+
+training:
+  architecture_type: 'cnn'
+  batch_size: 32
