@@ -161,3 +161,44 @@ def copy_image_from_df(df, out_dir, target_size=None, cutting_ruler=False, inver
         # resize image
         resized_image = inverted_img.resize((target_size[0], target_size[1]), resample=Image.Resampling.LANCZOS)
         resized_image.save(target_path)
+
+
+def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None):
+    # report
+    if df1 is None:
+        res2 = df2.groupby(['groundtruth']).size()
+        res2_sample = df2_sample.groupby(['groundtruth']).size()
+
+        res1 = res2.copy()
+        res1[:] = 0
+        res1_sample = res2_sample.copy()
+        res1_sample[:] = 0
+
+    elif df2 is None:
+        res1 = df1.groupby(['groundtruth']).size()
+        res1_sample = df1_sample.groupby(['groundtruth']).size()
+
+        res2 = res1.copy()
+        res2[:] = 0
+        res2_sample = res1_sample.copy()
+        res2_sample[:] = 0
+
+    else:
+        res1 = df1.groupby(['groundtruth']).size()
+        res1_sample = df1_sample.groupby(['groundtruth']).size()
+
+        res2 = df2.groupby(['groundtruth']).size()
+        res2_sample = df2_sample.groupby(['groundtruth']).size()
+
+    series1 = pd.Series(res1, name='uvp5')
+    series2 = pd.Series(res1_sample, name='uvp5_sample')
+    series3 = pd.Series(res2, name='uvp6_sample')
+    series4 = pd.Series(res2_sample, name='uvp6_sample')
+
+    # Merge the two Series based on their index
+    merged_series = pd.merge(series1, series2, left_index=True, right_index=True)
+    merged_series = pd.merge(merged_series, series3, left_index=True, right_index=True)
+    merged_series = pd.merge(merged_series, series4, left_index=True, right_index=True)
+
+    csv_report_path = sampling_path / ("report.csv")
+    merged_series.to_csv(csv_report_path)
