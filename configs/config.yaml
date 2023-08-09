@@ -1,0 +1,12 @@
+
+
+sampling:
+  path_uvp5: 'D:\mojmas\files\data\UVP5_images_dataset'
+  path_uvp6: 'D:\mojmas\files\data\csv_history\sampled_images5.csv'
+  path_output: 'D:\mojmas\files\data\result_sampling'
+  uvp_type: 'UVP5'          # choose 'UVP5' or 'UVP6' or 'BOTH' merge both uvp
+  num_class: 13             # choose 13 or 25 classes
+  sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
+  sampling_percent_uvp5: 100
+  sampling_percent_uvp6: 100
+  target_size: [227, 227]  #image target size
