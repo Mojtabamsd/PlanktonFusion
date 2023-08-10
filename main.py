@@ -2,7 +2,8 @@ import argparse
 import os
 import sys
 from tools import Console
-from data_preparation import sampling
+from data_preparation.sampling import sampling
+from train.train import train_cnn
 
 
 def add_arguments(obj):
@@ -10,13 +11,19 @@ def add_arguments(obj):
         "-c",
         "--configuration",
         type=str,
-        default="georef_semantics.yaml",
-        help="Path to the configuration file 'georef_semantics.yaml'",
+        default="../config/config.yaml",
+        help="Path to the configuration file 'config.yaml'",
+    )
+    obj.add_argument(
+        "-i",
+        "--input-folder",
+        type=str,
+        help="Input path to load data.",
     )
     obj.add_argument(
         "-o",
         "--output-folder",
-        default="lga_output",
+        default="results",
         type=str,
         help="Output path to write the results.",
     )
@@ -24,19 +31,23 @@ def add_arguments(obj):
 
 def main(args=None):
 
-    os.system("")
-
-    Console.banner()
-    Console.info("Running georef_semantics version " + str(Console.get_version()))
-
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Plankton Fusion Classifier")
     subparsers = parser.add_subparsers()
 
+    # sampling
     parser_sampling = subparsers.add_parser(
-        "sampling", help="preparing dataset images for training"
+        "sampling",
+        help="Prepare dataset ready for training.",
     )
     add_arguments(parser_sampling)
     parser_sampling.set_defaults(func=call_sampling)
+
+    # training
+    parser_training = subparsers.add_parser(
+        "training", help="Train a classifier"
+    )
+    add_arguments(parser_training)
+    parser_training.set_defaults(func=call_training)
 
     if len(sys.argv) == 1 and args is None:
         # Show help if no args provided
@@ -48,3 +59,11 @@ def main(args=None):
 
 def call_sampling(args):
     sampling(args.configuration)
+
+
+def call_training(args):
+    train_cnn(args.configuration)
+
+
+if __name__ == "__main__":
+    main()
