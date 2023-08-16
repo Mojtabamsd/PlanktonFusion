@@ -4,44 +4,40 @@ from pathlib import Path
 import datetime
 import sys
 from configs.config import Configuration
-from tools import Console
-from sampling_tools import sampling_uniform, sampling_stratified, sampling_fixed_number
-from sampling_tools import load_uvp5, load_uvp6, load_uvp6_from_csv, copy_image_from_df, report_csv
+from tools.Console import Console
+from data_preparation.sampling_tools import sampling_uniform, sampling_stratified, sampling_fixed_number
+from data_preparation.sampling_tools import load_uvp5, load_uvp6, load_uvp6_from_csv, copy_image_from_df, report_csv
 
 
 def sampling(config_path):
 
-    Console.info("Training started at", datetime.datetime.now())
-    # config = Configuration(configuration_path, force_overwrite)
-    # cg = config.geoclr_training
+    Console.info("Sampling started at", datetime.datetime.now())
+    config = Configuration(config_path)
 
-    config = Configuration("config_path")
-
-    # Accessing configuration values
-    print("Data Path:", config.sampling.path_uvp5)
-    print("Data Path:", config.sampling.path_uvp6)
+    print("Data Path UVP5:", config.sampling.path_uvp5)
+    print("Data Path UVP6:", config.sampling.path_uvp6)
 # dir_uvp5, dir_uvp6, dir_output, which_uvp, class_type, sampling_method, target_size
 
-    if which_uvp == 0:
+    if config.sampling.uvp_type == 'UVP5':
         # load uvp5
-        df1 = load_uvp5(dir_uvp5)
+        df1 = load_uvp5(config.sampling.path_uvp5)
         df2 = None
-    elif which_uvp == 1:
+    elif config.sampling.uvp_type == 'UVP6':
         # load uvp6
-        df2 = load_uvp6_from_csv(dir_uvp6)
+        df2 = load_uvp6_from_csv(config.sampling.path_uvp6)
         df1 = None
-    elif which_uvp == 2:
-        df1 = load_uvp5(dir_uvp5)
-        df2 = load_uvp6_from_csv(dir_uvp6)
+    elif config.sampling.uvp_type == 'BOTH':
+        df1 = load_uvp5(config.sampling.path_uvp5)
+        df2 = load_uvp6_from_csv(config.sampling.path_uvp6)
     else:
         print("Please select correct parameter for which_uvp")
         sys.exit()
 
     # regrouping
-    ren = pd.read_csv("../data_preparation/regrouping.csv")
-    if class_type == 0:
+    ren = pd.read_csv("./data_preparation/regrouping.csv")
+    if config.sampling.num_class == 13:
         merge_dict = dict(zip(ren['taxon'], ren['regrouped2']))
-    elif class_type == 1:
+    elif config.sampling.num_class == 25:
         merge_dict = dict(zip(ren['taxon'], ren['regrouped1']))
     else:
         print("Please select correct parameter for class_type")
@@ -49,12 +45,12 @@ def sampling(config_path):
 
     if df1 is not None:
         df1['groundtruth'] = df1['groundtruth'].map(merge_dict).fillna(df1['groundtruth'])
-        if sampling_method == 0:
-            df1_sample = sampling_fixed_number(df1, sampling_percent_uvp5)
-        elif sampling_method == 1:
-            df1_sample = sampling_uniform(df1, sampling_percent_uvp5)
-        elif sampling_method == 2:
-            df1_sample = sampling_stratified(df1, sampling_percent_uvp5)
+        if config.sampling.sampling_method == 'fixed':
+            df1_sample = sampling_fixed_number(df1, config.sampling.sampling_percent_uvp5)
+        elif config.sampling.sampling_method == 'uniform':
+            df1_sample = sampling_uniform(df1, config.sampling.sampling_percent_uvp5)
+        elif config.sampling.sampling_method == 'stratified':
+            df1_sample = sampling_stratified(df1, config.sampling.sampling_percent_uvp5)
         else:
             print("Please select correct parameter for sampling_method")
             sys.exit()
@@ -63,12 +59,12 @@ def sampling(config_path):
 
     if df2 is not None:
         df2['groundtruth'] = df2['groundtruth'].map(merge_dict).fillna(df2['groundtruth'])
-        if sampling_method == 0:
-            df2_sample = sampling_fixed_number(df2, sampling_percent_uvp6)
-        elif sampling_method == 1:
-            df2_sample = sampling_uniform(df2, sampling_percent_uvp6)
-        elif sampling_method == 2:
-            df2_sample = sampling_stratified(df2, sampling_percent_uvp6)
+        if config.sampling.sampling_method == 'fixed':
+            df2_sample = sampling_fixed_number(df2, config.sampling.sampling_percent_uvp6)
+        elif config.sampling.sampling_method == 'uniform':
+            df2_sample = sampling_uniform(df2, config.sampling.sampling_percent_uvp6)
+        elif config.sampling.sampling_method == 'stratified':
+            df2_sample = sampling_stratified(df2, config.sampling.sampling_percent_uvp6)
         else:
             print("Please select correct parameter for sampling_method")
             sys.exit()
@@ -77,7 +73,7 @@ def sampling(config_path):
 
     # create sampling output
     time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    output_folder = Path(dir_output)
+    output_folder = Path(config.sampling.path_output)
     sampling_path = output_folder / ("sampling" + time_str)
     # if not sampling_path.exists():
     sampling_path.mkdir(parents=True, exist_ok=True)
@@ -86,9 +82,9 @@ def sampling(config_path):
 
     # Loop through the image paths and copy the images to the target directory
     if df1_sample is not None:
-        copy_image_from_df(df1_sample, sampling_path_images, target_size, cutting_ruler=True, invert_img=True)
+        copy_image_from_df(df1_sample, sampling_path_images, config.sampling.target_size, cutting_ruler=True, invert_img=True)
     if df2_sample is not None:
-        copy_image_from_df(df2_sample, sampling_path_images, target_size, cutting_ruler=False, invert_img=False)
+        copy_image_from_df(df2_sample, sampling_path_images, config.sampling.target_size, cutting_ruler=False, invert_img=False)
 
     # merge two dataframe
     df = pd.concat([df1_sample, df2_sample])
@@ -109,26 +105,26 @@ def sampling(config_path):
     report_csv(df1, df1_sample, df2, df2_sample, sampling_path)
 
 
-if __name__ == "__main__":
-    dir_uvp5 = r'D:\mojmas\files\data\UVP5_images_dataset'
-    # dir_uvp6 = r'D:\mojmas\files\data\UVP6Net'
-    dir_uvp6 = r'D:\mojmas\files\data\csv_history\sampled_images5.csv'
-    dir_output = r'D:\mojmas\files\data\result_sampling'
-
-    which_uvp = 1  # '0' uvp5, '1' uvp6, '2' both uvp merge
-    class_type = 0  # '0' means 13 class or '1' means 25 classes
-
-    # '0' sample fixed number, '1' sample uniform percent from each class, '2' sample stratified from each uvps
-    sampling_method = 0
-
-    # if sampling fixed numbers
-    sampling_percent_uvp5 = 100
-    sampling_percent_uvp6 = 100
-
-    # # if sampling stratified
-    # sampling_percent_uvp5 = 0.0051  # all=9,884,798
-    # sampling_percent_uvp6 = 0.08  # all=634,459
-
-    target_size = [227, 227]
-
-    sampling(dir_uvp5, dir_uvp6, dir_output, which_uvp, class_type, sampling_method, target_size)
+# if __name__ == "__main__":
+#     dir_uvp5 = r'D:\mojmas\files\data\UVP5_images_dataset'
+#     # dir_uvp6 = r'D:\mojmas\files\data\UVP6Net'
+#     dir_uvp6 = r'D:\mojmas\files\data\csv_history\sampled_images5.csv'
+#     dir_output = r'D:\mojmas\files\data\result_sampling'
+#
+#     which_uvp = 1  # '0' uvp5, '1' uvp6, '2' both uvp merge
+#     class_type = 0  # '0' means 13 class or '1' means 25 classes
+#
+#     # '0' sample fixed number, '1' sample uniform percent from each class, '2' sample stratified from each uvps
+#     sampling_method = 0
+#
+#     # if sampling fixed numbers
+#     sampling_percent_uvp5 = 100
+#     sampling_percent_uvp6 = 100
+#
+#     # # if sampling stratified
+#     # sampling_percent_uvp5 = 0.0051  # all=9,884,798
+#     # sampling_percent_uvp6 = 0.08  # all=634,459
+#
+#     target_size = [227, 227]
+#
+#     sampling(dir_uvp5, dir_uvp6, dir_output, which_uvp, class_type, sampling_method, target_size)
