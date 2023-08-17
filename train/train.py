@@ -1,8 +1,4 @@
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import datetime
-import sys
 from configs.config import Configuration
 from tools.Console import Console
 from pathlib import Path
@@ -11,6 +7,9 @@ from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.architecture import SimpleCNN
 import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.metrics import accuracy_score
 
 
 def train_cnn(config_path, input_path, output_path):
@@ -48,24 +47,61 @@ def train_cnn(config_path, input_path, output_path):
         transforms.ToTensor(),
     ])
 
-    # Create uvp dataset
-    dataset = UvpDataset(csv_file=input_csv, root_dir=input_folder, transform=transform)
+    # Create uvp dataset datasets for training and validation
+    train_dataset = UvpDataset(csv_file=input_csv, root_dir=input_folder, transform=transform, train=True)
+    val_dataset = UvpDataset(csv_file=input_csv, root_dir=input_folder, transform=transform, train=False)
 
-    # Create data loader
-    dataloader = DataLoader(dataset, batch_size=config.training.batch_size, shuffle=True)
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=config.training.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=config.training.batch_size, shuffle=False)
 
-    config.num_class = dataset.data_frame['label'].nunique()
+    config.num_class = train_dataset.data_frame['label'].nunique()
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
 
     model = SimpleCNN(config.num_class, gray=config.training.gray)
+    model.to(device)
 
-    # training loop
-    for batch_idx, (images, labels) in enumerate(dataloader):
-        # Your training code here
-        pass
+    # Loss criterion and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
-    a=1
+    # Training loop
+    for epoch in range(config.training.num_epochs):
+        model.train()
+        running_loss = 0.0
+
+        for images, labels in train_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+
+        average_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
+
+    # Evaluation loop
+    model.eval()
+    all_labels = []
+    all_preds = []
+
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+
+            all_labels.extend(labels.cpu().numpy())
+            all_preds.extend(preds.cpu().numpy())
+
+    accuracy = accuracy_score(all_labels, all_preds)
+    print(f"Validation Accuracy: {accuracy:.4f}")
 
 
 
