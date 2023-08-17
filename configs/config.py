@@ -23,10 +23,12 @@ class SamplingConfig:
 
 
 class TrainingConfig:
-    def __init__(self, architecture_type, batch_size, gray):
+    def __init__(self, architecture_type, batch_size, gray, learning_rate, num_epoch):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
         self.gray = gray
+        self.learning_rate = learning_rate
+        self.num_epoch = num_epoch
 
 
 class Configuration:
