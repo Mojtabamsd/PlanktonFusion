@@ -57,7 +57,7 @@ def load_uvp5(path):
                              'uvp_model'])
 
     df = o.join(s, on='profile_id')
-    df = df.rename(columns={'group': 'groundtruth', })
+    df = df.rename(columns={'group': 'label', })
 
     # dicard ZD values
     df = df[df['uvp_model'] != 'ZD']
@@ -74,7 +74,7 @@ def load_uvp5(path):
 
 def load_uvp6(path):
     df = pd.read_csv((path + r'\taxa.csv.gz'), sep=',', usecols=['objid', 'taxon'])
-    df['groundtruth'] = df['taxon']
+    df['label'] = df['taxon']
     df = df.rename(columns={'objid': 'object_id', })
 
     df['uvp_model'] = ['UVP6'] * len(df)
@@ -100,18 +100,18 @@ def load_uvp6(path):
 def load_uvp6_from_csv(csv_path):
 
     df = pd.read_csv(csv_path, sep=',').reset_index(drop=True, inplace=False)
-    df = df.rename(columns={'groundthruth': 'groundtruth', })
+    df = df.rename(columns={'groundthruth': 'label', })
 
-    df['groundtruth'] = df['groundtruth'].str.replace('fi', 'fiber')
-    df['groundtruth'] = df['groundtruth'].str.replace('_', '<')
-    df['groundtruth'] = df['groundtruth'].str.replace('copepoda<eggs', 'copepoda eggs')
-    df['groundtruth'] = df['groundtruth'].str.replace('Hydrozoa', 'Hydrozoa_others')
-    df['groundtruth'] = df['groundtruth'].str.replace('Mollusca', 'Mollusca_others')
-    df['groundtruth'] = df['groundtruth'].str.replace('fiberber', 'detritus')
-    df['groundtruth'] = df['groundtruth'].str.replace('fiberlament', 'detritus')
-    df['groundtruth'] = df['groundtruth'].str.replace('Creseis acicula', 'Creseis')
-    df['groundtruth'] = df['groundtruth'].str.replace('antenna<Calanoida', 'Calanoida')
-    df = df[df['groundtruth'] != 'Botrynema']
+    df['label'] = df['label'].str.replace('fi', 'fiber')
+    df['label'] = df['label'].str.replace('_', '<')
+    df['label'] = df['label'].str.replace('copepoda<eggs', 'copepoda eggs')
+    df['label'] = df['label'].str.replace('Hydrozoa', 'Hydrozoa_others')
+    df['label'] = df['label'].str.replace('Mollusca', 'Mollusca_others')
+    df['label'] = df['label'].str.replace('fiberber', 'detritus')
+    df['label'] = df['label'].str.replace('fiberlament', 'detritus')
+    df['label'] = df['label'].str.replace('Creseis acicula', 'Creseis')
+    df['label'] = df['label'].str.replace('antenna<Calanoida', 'Calanoida')
+    df = df[df['label'] != 'Botrynema']
 
     df = df.rename(columns={'depth [m]': 'depth', })
     df = df.rename(columns={'latitude [deg]': 'lat', })
@@ -166,8 +166,8 @@ def copy_image_from_df(df, out_dir, target_size=None, cutting_ruler=False, inver
 def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None):
     # report
     if df1 is None:
-        res2 = df2.groupby(['groundtruth']).size()
-        res2_sample = df2_sample.groupby(['groundtruth']).size()
+        res2 = df2.groupby(['label']).size()
+        res2_sample = df2_sample.groupby(['label']).size()
 
         res1 = res2.copy()
         res1[:] = 0
@@ -175,8 +175,8 @@ def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None):
         res1_sample[:] = 0
 
     elif df2 is None:
-        res1 = df1.groupby(['groundtruth']).size()
-        res1_sample = df1_sample.groupby(['groundtruth']).size()
+        res1 = df1.groupby(['label']).size()
+        res1_sample = df1_sample.groupby(['label']).size()
 
         res2 = res1.copy()
         res2[:] = 0
@@ -184,11 +184,11 @@ def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None):
         res2_sample[:] = 0
 
     else:
-        res1 = df1.groupby(['groundtruth']).size()
-        res1_sample = df1_sample.groupby(['groundtruth']).size()
+        res1 = df1.groupby(['label']).size()
+        res1_sample = df1_sample.groupby(['label']).size()
 
-        res2 = df2.groupby(['groundtruth']).size()
-        res2_sample = df2_sample.groupby(['groundtruth']).size()
+        res2 = df2.groupby(['label']).size()
+        res2_sample = df2_sample.groupby(['label']).size()
 
     series1 = pd.Series(res1, name='uvp5')
     series2 = pd.Series(res1_sample, name='uvp5_sample')
