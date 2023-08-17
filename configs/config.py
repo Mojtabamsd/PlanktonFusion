@@ -2,6 +2,12 @@ import yaml
 from pathlib import Path
 
 
+class BaseConfig:
+    def __init__(self, cpu=False, gpu_index=0):
+        self.cpu = cpu
+        self.gpu_index = gpu_index
+
+
 class SamplingConfig:
     def __init__(self, path_uvp5, path_uvp6, path_output, uvp_type, num_class,
                  sampling_method, sampling_percent_uvp5, sampling_percent_uvp6, target_size):
@@ -30,6 +36,7 @@ class Configuration:
 
         self.input_path = input_path
         self.output_path = output_path
+        self.base = BaseConfig(**config_data['base'])
         self.sampling = SamplingConfig(**config_data['sampling'])
         self.training = TrainingConfig(**config_data['training'])
 
