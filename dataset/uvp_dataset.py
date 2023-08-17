@@ -4,13 +4,19 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+from sklearn.model_selection import train_test_split
 
 
 class UvpDataset(Dataset):
-    def __init__(self, csv_file, root_dir, transform=None):
+    def __init__(self, csv_file, root_dir, transform=None, train=True):
         self.data_frame = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
+        self.train = train
+
+        if self.train:
+            # 20% data is used for evaluation
+            self.data_frame, _ = train_test_split(self.data_frame, test_size=0.2, random_state=42)
 
     def __len__(self):
         return len(self.data_frame)

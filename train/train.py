@@ -60,6 +60,13 @@ def train_cnn(config_path, input_path, output_path):
 
     model = SimpleCNN(config.num_class, gray=config.training.gray)
 
+    # training loop
+    for batch_idx, (images, labels) in enumerate(dataloader):
+        # Your training code here
+        pass
+
+    a=1
+
 
 
 
