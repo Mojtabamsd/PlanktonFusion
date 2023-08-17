@@ -9,20 +9,20 @@ from train.train import train_cnn
 def add_arguments(obj):
     obj.add_argument(
         "-c",
-        "--configuration",
+        "--configuration_file",
         type=str,
-        default="../config/config.yaml",
+        default="./config/config.yaml",
         help="Path to the configuration file 'config.yaml'",
     )
     obj.add_argument(
         "-i",
-        "--input-folder",
+        "--input_folder",
         type=str,
         help="Input path to load data.",
     )
     obj.add_argument(
         "-o",
-        "--output-folder",
+        "--output_folder",
         default="results",
         type=str,
         help="Output path to write the results.",
@@ -58,11 +58,11 @@ def main(args=None):
 
 
 def call_sampling(args):
-    sampling(args.configuration)
+    sampling(args.configuration_file)
 
 
 def call_training(args):
-    train_cnn(args.configuration)
+    train_cnn(args.configuration_file, args.input_folder, args.output_folder)
 
 
 if __name__ == "__main__":

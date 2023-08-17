@@ -1,4 +1,5 @@
 import yaml
+from pathlib import Path
 
 
 class SamplingConfig:
@@ -16,15 +17,28 @@ class SamplingConfig:
 
 
 class TrainingConfig:
-    def __init__(self, architecture_type, batch_size):
+    def __init__(self, architecture_type, batch_size, gray):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
+        self.gray = gray
 
 
 class Configuration:
-    def __init__(self, config_file_path):
+    def __init__(self, config_file_path, input_path=None, output_path=None):
         with open(config_file_path, "r") as config_file:
             config_data = yaml.safe_load(config_file)
 
+        self.input_path = input_path
+        self.output_path = output_path
         self.sampling = SamplingConfig(**config_data['sampling'])
         self.training = TrainingConfig(**config_data['training'])
+
+    def write(self, filename):
+        filename = Path(filename)
+        if not filename.parent.exists():
+            filename.parent.mkdir(parents=True)
+        with filename.open("w") as file_handler:
+            yaml.dump(
+                self, file_handler, allow_unicode=True, default_flow_style=False
+            )
+

@@ -5,8 +5,16 @@ import datetime
 import sys
 from configs.config import Configuration
 from tools.Console import Console
-from data_preparation.sampling_tools import sampling_uniform, sampling_stratified, sampling_fixed_number
-from data_preparation.sampling_tools import load_uvp5, load_uvp6, load_uvp6_from_csv, copy_image_from_df, report_csv
+from data_preparation.sampling_tools import (
+    sampling_uniform,
+    sampling_stratified,
+    sampling_fixed_number,
+    load_uvp5,
+    load_uvp6,
+    load_uvp6_from_csv,
+    copy_image_from_df,
+    report_csv
+)
 
 
 def sampling(config_path):
