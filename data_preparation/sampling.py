@@ -4,7 +4,7 @@ from pathlib import Path
 import datetime
 import sys
 from configs.config import Configuration
-from tools.Console import Console
+from tools.console import Console
 from data_preparation.sampling_tools import (
     sampling_uniform,
     sampling_stratified,

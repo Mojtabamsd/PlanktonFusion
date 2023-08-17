@@ -31,6 +31,12 @@ class TrainingConfig:
         self.num_epoch = num_epoch
 
 
+class PredictionConfig:
+    def __init__(self, path_model, batch_size):
+        self.path_model = path_model
+        self.batch_size = batch_size
+
+
 class Configuration:
     def __init__(self, config_file_path, input_path=None, output_path=None):
         with open(config_file_path, "r") as config_file:
@@ -41,6 +47,7 @@ class Configuration:
         self.base = BaseConfig(**config_data['base'])
         self.sampling = SamplingConfig(**config_data['sampling'])
         self.training = TrainingConfig(**config_data['training'])
+        self.prediction = PredictionConfig(**config_data['prediction'])
 
     def write(self, filename):
         filename = Path(filename)

@@ -1,9 +1,10 @@
 import argparse
 import os
 import sys
-from tools import Console
+from tools import console
 from data_preparation.sampling import sampling
 from train.train import train_cnn
+from inference.prediction import prediction
 
 
 def add_arguments(obj):
@@ -49,6 +50,13 @@ def main(args=None):
     add_arguments(parser_training)
     parser_training.set_defaults(func=call_training)
 
+    # prediction
+    parser_prediction = subparsers.add_parser(
+        "prediction", help="Prediction from trained model"
+    )
+    add_arguments(parser_prediction)
+    parser_prediction.set_defaults(func=call_prediction)
+
     if len(sys.argv) == 1 and args is None:
         # Show help if no args provided
         parser.print_help(sys.stderr)
@@ -63,6 +71,10 @@ def call_sampling(args):
 
 def call_training(args):
     train_cnn(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_prediction(args):
+    prediction(args.configuration_file, args.input_folder, args.output_folder)
 
 
 if __name__ == "__main__":

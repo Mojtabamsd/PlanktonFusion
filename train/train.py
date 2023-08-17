@@ -1,6 +1,6 @@
 import datetime
 from configs.config import Configuration
-from tools.Console import Console
+from tools.console import Console
 from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
