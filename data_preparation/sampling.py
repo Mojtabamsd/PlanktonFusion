@@ -52,7 +52,7 @@ def sampling(config_path):
         sys.exit()
 
     if df1 is not None:
-        df1['groundtruth'] = df1['groundtruth'].map(merge_dict).fillna(df1['groundtruth'])
+        df1['label'] = df1['label'].map(merge_dict).fillna(df1['label'])
         if config.sampling.sampling_method == 'fixed':
             df1_sample = sampling_fixed_number(df1, config.sampling.sampling_percent_uvp5)
         elif config.sampling.sampling_method == 'uniform':
@@ -66,7 +66,7 @@ def sampling(config_path):
         df1_sample = None
 
     if df2 is not None:
-        df2['groundtruth'] = df2['groundtruth'].map(merge_dict).fillna(df2['groundtruth'])
+        df2['label'] = df2['label'].map(merge_dict).fillna(df2['label'])
         if config.sampling.sampling_method == 'fixed':
             df2_sample = sampling_fixed_number(df2, config.sampling.sampling_percent_uvp6)
         elif config.sampling.sampling_method == 'uniform':
@@ -105,7 +105,7 @@ def sampling(config_path):
     df = df.replace('NaN', 0)
 
     selected_columns = df[['index', 'profile_id', 'object_id', 'depth', 'lat', 'lon', 'datetime', 'uvp_model',
-                           'groundtruth', 'relative_path']]
+                           'label', 'relative_path']]
 
     csv_path = sampling_path / ("sampled_images.csv")
     selected_columns.to_csv(csv_path)
