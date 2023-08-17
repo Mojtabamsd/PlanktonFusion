@@ -18,4 +18,6 @@ training:
   architecture_type: 'cnn'
   batch_size: 32
   gray: True
+  learning_rate: 0.001
+  num_epoch: 10
 
