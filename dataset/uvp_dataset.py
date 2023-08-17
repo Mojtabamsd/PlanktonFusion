@@ -18,6 +18,9 @@ class UvpDataset(Dataset):
             # 20% data is used for evaluation
             self.data_frame, _ = train_test_split(self.data_frame, test_size=0.2, random_state=42)
 
+        # Create a dictionary to map string labels to integer labels
+        self.label_to_int = {label: i for i, label in enumerate(self.data_frame['label'].unique())}
+
     def __len__(self):
         return len(self.data_frame)
 
@@ -30,4 +33,7 @@ class UvpDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, label
+        # Convert string label to integer label using the label_to_int dictionary
+        int_label = self.label_to_int[label]
+
+        return image, int_label
