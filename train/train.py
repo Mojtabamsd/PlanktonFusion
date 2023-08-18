@@ -50,13 +50,15 @@ def train_cnn(config_path, input_path, output_path):
     ])
 
     # Create uvp dataset datasets for training and validation
-    train_dataset = UvpDataset(csv_file=input_csv,
-                               root_dir=input_folder,
+    train_dataset = UvpDataset(root_dir=input_folder,
+                               num_class=config.sampling.num_class,
+                               csv_file=input_csv,
                                transform=transform,
                                train=True)
 
-    val_dataset = UvpDataset(csv_file=input_csv,
-                             root_dir=input_folder,
+    val_dataset = UvpDataset(root_dir=input_folder,
+                             num_class=config.sampling.num_class,
+                             csv_file=input_csv,
                              transform=transform,
                              train=False)
 
@@ -68,11 +70,10 @@ def train_cnn(config_path, input_path, output_path):
                             batch_size=config.training.batch_size,
                             shuffle=False)
 
-    config.num_class = train_dataset.data_frame['label'].nunique()
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
 
-    model = SimpleCNN(num_classes=config.num_class,
+    model = SimpleCNN(num_classes=config.sampling.num_class,
                       gray=config.training.gray,
                       input_size=config.sampling.target_size)
     model.to(device)
