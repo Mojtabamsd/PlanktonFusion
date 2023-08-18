@@ -9,7 +9,9 @@ from models.architecture import SimpleCNN
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import accuracy_score
+from tools.utils import report_to_df
+from sklearn.metrics import classification_report, confusion_matrix
+import pandas as pd
 
 
 def train_cnn(config_path, input_path, output_path):
@@ -54,21 +56,12 @@ def train_cnn(config_path, input_path, output_path):
                                num_class=config.sampling.num_class,
                                csv_file=input_csv,
                                transform=transform,
-                               train=True)
-
-    val_dataset = UvpDataset(root_dir=input_folder,
-                             num_class=config.sampling.num_class,
-                             csv_file=input_csv,
-                             transform=transform,
-                             train=False)
+                               phase='train')
 
     # Create data loaders
     train_loader = DataLoader(train_dataset,
                               batch_size=config.training.batch_size,
                               shuffle=True)
-    val_loader = DataLoader(val_dataset,
-                            batch_size=config.training.batch_size,
-                            shuffle=False)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
@@ -87,7 +80,7 @@ def train_cnn(config_path, input_path, output_path):
         model.train()
         running_loss = 0.0
 
-        for images, labels in train_loader:
+        for images, labels, _ in train_loader:
             images, labels = images.to(device), labels.to(device)
 
             optimizer.zero_grad()
@@ -109,13 +102,22 @@ def train_cnn(config_path, input_path, output_path):
 
     console.info(f"Model weights saved to {saved_weights_file}")
 
+    # Create uvp dataset datasets for training and validation
+    train_dataset.phase = 'val'
+    val_dataset = train_dataset
+
+    # Create data loaders
+    val_loader = DataLoader(val_dataset,
+                            batch_size=config.training.batch_size,
+                            shuffle=True)
+
     # Evaluation loop
     model.eval()
     all_labels = []
     all_preds = []
 
     with torch.no_grad():
-        for images, labels in val_loader:
+        for images, labels, _ in val_loader:
             images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
@@ -124,9 +126,28 @@ def train_cnn(config_path, input_path, output_path):
             all_labels.extend(labels.cpu().numpy())
             all_preds.extend(preds.cpu().numpy())
 
-    accuracy = accuracy_score(all_labels, all_preds)
-    console.info(f"Validation Accuracy: {accuracy:.4f}")
+    report = classification_report(
+        all_labels,
+        all_preds,
+        target_names=train_dataset.label_to_int,
+        digits=6,
+    )
 
+    conf_mtx = confusion_matrix(
+        all_labels,
+        all_preds,
+    )
+
+    df = report_to_df(report)
+    report_filename = training_path / 'report_evaluation.csv'
+    df.to_csv(report_filename)
+
+    df = pd.DataFrame(conf_mtx)
+    conf_mtx_filename = training_path / 'conf_matrix_evaluation.csv'
+    df.to_csv(conf_mtx_filename)
+
+    console.info('************* Evaluation Report *************')
+    console.info(report)
     console.save_log(training_path)
 
 
