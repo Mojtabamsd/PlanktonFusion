@@ -9,12 +9,15 @@ from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.architecture import SimpleCNN
 import torch
+import pandas as pd
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import accuracy_score
 import os
 from PIL import Image
 import shutil
+import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix
 
 
 def prediction(config_path, input_path, output_path):
@@ -85,11 +88,17 @@ def prediction(config_path, input_path, output_path):
 def predict(model, dataloader, prediction_path, device):
     model.eval()
 
+    label_index = []
+    predicted_index = []
+
     with torch.no_grad():
-        for index, (images, _, img_names) in enumerate(dataloader):
+        for index, (images, labels, img_names) in enumerate(dataloader):
             images = images.to(device)
             outputs = model(images)
             _, predicted_labels = torch.max(outputs, 1)
+
+            label_index.append(labels.data.cpu().detach().numpy())
+            predicted_index.append(predicted_labels.cpu().detach().numpy())
 
             for i in range(len(predicted_labels)):
                 int_label = predicted_labels[i].item()
@@ -103,6 +112,43 @@ def predict(model, dataloader, prediction_path, device):
                 input_path = os.path.join(dataloader.dataset.root_dir, image_name)
                 shutil.copy(input_path, image_path)
 
+        label_index = np.concatenate(label_index).ravel()
+        predicted_index = np.concatenate(predicted_index).ravel()
+
+        report = classification_report(
+            label_index,
+            predicted_index,
+            target_names=dataloader.dataset.label_to_int,
+            digits=6,
+        )
+
+        conf_mtx = confusion_matrix(
+            label_index,
+            predicted_index,
+        )
+
+        df = report_to_df(report)
+        report_filename = os.path.join(prediction_path, 'report.csv')
+        df.to_csv(report_filename)
+
+        df = pd.DataFrame(conf_mtx)
+        conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
+        df.to_csv(conf_mtx_filename)
+
     model.train()
 
 
+def report_to_df(report):
+    report = [x.split(" ") for x in report.split("\n")]
+    header = ["Class Name"] + [x for x in report[0] if x != ""]
+    values = []
+    for row in report[1:-1]:
+        row = [value for value in row if value != ""]
+        if row != []:
+            while row.__len__() > header.__len__():
+                tmp = list([row[0] + ' ' + row[1]])
+                new_row = tmp + row[2:]
+                row = new_row
+            values.append(row)
+    df = pd.DataFrame(data=values, columns=header)
+    return df
