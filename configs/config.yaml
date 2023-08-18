@@ -25,4 +25,4 @@ training:
 
 prediction:
   path_model: 'D:\mojmas\files\data\result_sampling\training20230817151343'
-  batch_size: 1
+  batch_size: 2
