@@ -19,26 +19,32 @@ from data_preparation.sampling_tools import (
 
 def sampling(config_path):
 
-    Console.info("Sampling started at", datetime.datetime.now())
+    console = Console()
+    console.info("Sampling started at", datetime.datetime.now())
     config = Configuration(config_path)
 
-    print("Data Path UVP5:", config.sampling.path_uvp5)
-    print("Data Path UVP6:", config.sampling.path_uvp6)
+    console.info("Data Path UVP5:", config.sampling.path_uvp5)
+    console.info("Data Path UVP6:", config.sampling.path_uvp6)
 # dir_uvp5, dir_uvp6, dir_output, which_uvp, class_type, sampling_method, target_size
 
     if config.sampling.uvp_type == 'UVP5':
         # load uvp5
         df1 = load_uvp5(config.sampling.path_uvp5)
+        df1['label'] = df1['label'].str.replace('<', '_')
         df2 = None
     elif config.sampling.uvp_type == 'UVP6':
         # load uvp6
         df2 = load_uvp6_from_csv(config.sampling.path_uvp6)
+        df2['label'] = df2['label'].str.replace('<', '_')
         df1 = None
     elif config.sampling.uvp_type == 'BOTH':
         df1 = load_uvp5(config.sampling.path_uvp5)
+        df1['label'] = df1['label'].str.replace('<', '_')
+
         df2 = load_uvp6_from_csv(config.sampling.path_uvp6)
+        df2['label'] = df2['label'].str.replace('<', '_')
     else:
-        print("Please select correct parameter for which_uvp")
+        console.error("Please select correct parameter for which_uvp")
         sys.exit()
 
     # regrouping
@@ -48,7 +54,7 @@ def sampling(config_path):
     elif config.sampling.num_class == 25:
         merge_dict = dict(zip(ren['taxon'], ren['regrouped1']))
     else:
-        print("Please select correct parameter for class_type")
+        console.error("Please select correct parameter for class_type")
         sys.exit()
 
     if df1 is not None:
@@ -60,7 +66,7 @@ def sampling(config_path):
         elif config.sampling.sampling_method == 'stratified':
             df1_sample = sampling_stratified(df1, config.sampling.sampling_percent_uvp5)
         else:
-            print("Please select correct parameter for sampling_method")
+            console.error("Please select correct parameter for sampling_method")
             sys.exit()
     else:
         df1_sample = None
@@ -74,7 +80,7 @@ def sampling(config_path):
         elif config.sampling.sampling_method == 'stratified':
             df2_sample = sampling_stratified(df2, config.sampling.sampling_percent_uvp6)
         else:
-            print("Please select correct parameter for sampling_method")
+            console.error("Please select correct parameter for sampling_method")
             sys.exit()
     else:
         df2_sample = None
