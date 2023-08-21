@@ -9,7 +9,7 @@ from models.architecture import SimpleCNN
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tools.utils import report_to_df
+from tools.utils import report_to_df, plot_loss
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 
@@ -35,6 +35,7 @@ def train_cnn(config_path, input_path, output_path):
     time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
     rel_training_path = Path("training" + time_str)
     training_path = output_folder / rel_training_path
+    config.training_path = training_path
     if not training_path.exists():
         training_path.mkdir(exist_ok=True, parents=True)
     elif training_path.exists():
@@ -75,6 +76,8 @@ def train_cnn(config_path, input_path, output_path):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
+    loss_values = []
+
     # Training loop
     for epoch in range(config.training.num_epoch):
         model.train()
@@ -92,7 +95,11 @@ def train_cnn(config_path, input_path, output_path):
             running_loss += loss.item()
 
         average_loss = running_loss / len(train_loader)
+        loss_values.append(average_loss)
         console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
+
+    # Create a plot of the loss values
+    plot_loss(loss_values, config)
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights.pth"
