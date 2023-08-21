@@ -10,7 +10,8 @@ class BaseConfig:
 
 class SamplingConfig:
     def __init__(self, path_uvp5, path_uvp6, path_output, uvp_type, num_class,
-                 sampling_method, sampling_percent_uvp5, sampling_percent_uvp6, target_size):
+                 sampling_method, sampling_percent_uvp5, sampling_percent_uvp6, target_size,
+                 test_dataset_sampling, test_percent):
         self.path_uvp5 = path_uvp5
         self.path_uvp6 = path_uvp6
         self.path_output = path_output
@@ -20,6 +21,8 @@ class SamplingConfig:
         self.sampling_percent_uvp5 = sampling_percent_uvp5
         self.sampling_percent_uvp6 = sampling_percent_uvp6
         self.target_size = target_size
+        self.test_dataset_sampling = test_dataset_sampling
+        self.test_percent = test_percent
 
 
 class TrainingConfig:

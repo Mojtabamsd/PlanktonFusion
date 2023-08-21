@@ -48,7 +48,7 @@ def train_cnn(config_path, input_path, output_path):
 
     # Define data transformations
     transform = transforms.Compose([
-        transforms.Resize((227, 227)),  # Resize to desired input size
+        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
         transforms.ToTensor(),
     ])
 

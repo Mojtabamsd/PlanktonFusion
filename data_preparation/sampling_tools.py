@@ -1,25 +1,70 @@
 import pandas as pd
 import numpy as np
 import os
-import shutil
 from tqdm import tqdm
 from PIL import Image
+from sklearn.model_selection import StratifiedShuffleSplit
+
+
+# def sampling_stratified(df, percent):
+#     # shffle data
+#     df = df.sample(frac=1, random_state=np.random.seed())
+#     grouped = df.groupby('label')
+#
+#     # Initialize an empty DataFrame to store the sampled rows
+#     sampled = pd.DataFrame()
+#
+#     # For each group type, select 10 percent of the rows randomly
+#     for group_name, group_data in grouped:
+#         sample = group_data.sample(frac=percent, random_state=42)
+#         sampled = pd.concat([sampled, sample])
+#
+#     return sampled
 
 
 def sampling_stratified(df, percent):
-    # shffle data
+    # Shuffle data
     df = df.sample(frac=1, random_state=np.random.seed())
-    grouped = df.groupby('label')
+
+    # Split data into features (X) and labels (y)
+    y = df['label']
 
     # Initialize an empty DataFrame to store the sampled rows
     sampled = pd.DataFrame()
 
-    # For each group type, select 10 percent of the rows randomly
-    for group_name, group_data in grouped:
-        sample = group_data.sample(frac=percent, random_state=42)
+    # Create a StratifiedShuffleSplit object to sample 10 percent of the data
+    sss = StratifiedShuffleSplit(n_splits=1, train_size=percent, random_state=42)
+
+    # Iterate over the indices for the training set (10 percent)
+    for train_index, _ in sss.split(df, y):
+        sample = df.iloc[train_index]
         sampled = pd.concat([sampled, sample])
 
     return sampled
+
+
+def sampling_stratified_test(df, percent):
+    # Shuffle data
+    df = df.sample(frac=1, random_state=np.random.seed())
+
+    # Split data into labels (y)
+    y = df['label']
+
+    # Initialize an empty DataFrame to store the sampled rows
+    sampled = pd.DataFrame()
+
+    # Create a StratifiedShuffleSplit object to sample 10 percent of the data
+    sss = StratifiedShuffleSplit(n_splits=1, train_size=percent, random_state=42)
+
+    # Iterate over the indices for the training set (10 percent)
+    for train_index, _ in sss.split(df, y):
+        sample = df.iloc[train_index]
+        sampled = pd.concat([sampled, sample])
+
+    # Create a DataFrame containing the original data without the sampled rows
+    original_without_sampled = df.drop(sampled.index)
+
+    return sampled, original_without_sampled
 
 
 def sampling_uniform(df, percent):
