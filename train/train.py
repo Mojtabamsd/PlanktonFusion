@@ -16,14 +16,14 @@ import pandas as pd
 
 def train_cnn(config_path, input_path, output_path):
 
-    console = Console()
-    console.info("Training started ...")
-
     config = Configuration(config_path, input_path, output_path)
 
     # Create output directory
     input_folder = Path(input_path)
     output_folder = Path(output_path)
+
+    console = Console(output_folder)
+    console.info("Training started ...")
 
     sampled_images_csv_filename = "sampled_images.csv"
     input_csv = input_folder / sampled_images_csv_filename

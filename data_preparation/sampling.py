@@ -20,9 +20,10 @@ from data_preparation.sampling_tools import (
 
 def sampling(config_path):
 
-    console = Console()
-    console.info("Sampling started at", datetime.datetime.now())
     config = Configuration(config_path)
+    output_folder = Path(config.sampling.path_output)
+    console = Console(output_folder)
+    console.info("Sampling started at", datetime.datetime.now())
 
     console.info("Data Path UVP5:", config.sampling.path_uvp5)
     console.info("Data Path UVP6:", config.sampling.path_uvp6)
@@ -80,7 +81,6 @@ def sampling(config_path):
         df1_sample_test = None
         df1_train = df1
 
-
     if df2 is not None:
         df2['label'] = df2['label'].map(merge_dict).fillna(df2['label'])
 
@@ -106,7 +106,6 @@ def sampling(config_path):
 
     # create sampling output
     time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    output_folder = Path(config.sampling.path_output)
     sampling_path_train = output_folder / ("sampling" + time_str) / "train"
     # if not sampling_path_train.exists():
     sampling_path_train.mkdir(parents=True, exist_ok=True)
@@ -168,6 +167,7 @@ def sampling(config_path):
     selected_columns.to_csv(csv_path)
 
     report_csv(df1, df1_sample_test, df2, df2_sample_test, sampling_path_test)
+    # console.save_log(sampling_path_train)
 
 
 # if __name__ == "__main__":

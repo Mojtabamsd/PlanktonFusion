@@ -5,9 +5,9 @@ import traceback
 
 
 class Console:
-    def __init__(self, log_file="console_log.txt", error_file="error_log.txt"):
-        self.log_file = log_file
-        self.error_file = error_file
+    def __init__(self, log_path=None):
+        self.log_file = log_path / "console_log.txt"
+        self.error_file = log_path / "error_log.txt"
 
         # Redirect unhandled exceptions to custom error handler
         sys.excepthook = self.handle_exception
