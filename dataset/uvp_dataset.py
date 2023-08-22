@@ -27,6 +27,8 @@ class UvpDataset(Dataset):
             self.label_to_int = {label: i for i, label in enumerate(ren['regrouped2'].unique())}
         elif self.num_class == 25:
             self.label_to_int = {label: i for i, label in enumerate(ren['regrouped1'].unique())}
+        else:
+            self.label_to_int = {label: i for i, label in enumerate(self.data_frame['label'].unique())}
 
     def __len__(self):
         if self.csv_file and self.phase == 'val':

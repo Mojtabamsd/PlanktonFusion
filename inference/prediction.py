@@ -73,7 +73,7 @@ def prediction(config_path, input_path, output_path):
                               # csv_file=None,
                               csv_file=input_csv,
                               transform=transform,
-                              train=False)
+                              phase='test')
 
     dataloader = DataLoader(test_dataset, batch_size=config.prediction.batch_size, shuffle=False)
 

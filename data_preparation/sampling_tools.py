@@ -83,6 +83,25 @@ def sampling_uniform(df, percent):
     return sampled_df
 
 
+def sampling_uniform_test(df, percent):
+    # shffle data
+    df = df.sample(frac=1, random_state=np.random.seed())
+
+    group_sizes = df.groupby('label').size()
+    group_sample_sizes = (group_sizes / group_sizes.sum() * len(df) * percent).round().astype(int)
+    min_sample_size = group_sample_sizes.min()
+
+    # Sample the same number of data points from each class
+    sampled_df = df.groupby('label', group_keys=False).apply(
+        lambda x: x.sample(n=min_sample_size, replace=True) if len(x) < min_sample_size else x.sample(n=min_sample_size,
+                                                                                                      replace=False))
+
+    # Create a DataFrame containing the original data without the sampled rows
+    original_without_sampled = df.drop(sampled_df.index)
+
+    return sampled_df, original_without_sampled
+
+
 def sampling_fixed_number(df, fixed_number):
     # shffle data
     df = df.sample(frac=1, random_state=np.random.seed())
@@ -90,6 +109,18 @@ def sampling_fixed_number(df, fixed_number):
         lambda x: x.sample(n=fixed_number, replace=True) if len(x) > fixed_number else x.sample(n=len(x), replace=False))
 
     return sampled_df
+
+
+def sampling_fixed_number_test(df, fixed_number):
+    # shffle data
+    df = df.sample(frac=1, random_state=np.random.seed())
+    sampled_df = df.groupby('label', group_keys=False).apply(
+        lambda x: x.sample(n=fixed_number, replace=True) if len(x) > fixed_number else x.sample(n=len(x), replace=False))
+
+    # Create a DataFrame containing the original data without the sampled rows
+    original_without_sampled = df.drop(sampled_df.index)
+
+    return sampled_df, original_without_sampled
 
 
 def load_uvp5(path):

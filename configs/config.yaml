@@ -8,13 +8,14 @@ sampling:
   path_uvp5: 'D:\mojmas\files\data\UVP5_images_dataset'
   path_uvp6: 'D:\mojmas\files\data\csv_history\sampled_images5.csv'
   path_output: 'D:\mojmas\files\data\result_sampling'
-  num_class: 13             # choose 13 or 25 classes
+  num_class: 2             # choose 13 or 25 classes
   sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
-  sampling_percent_uvp5: 1000
-  sampling_percent_uvp6: 1000
+  sampling_percent_uvp5: 100
+  sampling_percent_uvp6: 100
   target_size: [227, 227]  #image target size
-  test_dataset_sampling: 'stratified' # it created [test_percent] of dataset for testing algorithm
-  test_percent: 0.005  #should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
+  test_dataset_sampling: 'fixed' # choose 'fixed' or 'uniform' or 'stratified',  it created [test_percent] of dataset for testing algorithm
+  test_percent_uvp5: 100  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
+  test_percent_uvp6: 100
 
 
 training:
@@ -26,5 +27,9 @@ training:
 
 
 prediction:
-  path_model: 'D:\mojmas\files\data\result_sampling\training20230817151343'
+  path_model: 'D:\mojmas\files\data\result_sampling\training20230821093231'
   batch_size: 2
+
+
+#synthetic:
+#

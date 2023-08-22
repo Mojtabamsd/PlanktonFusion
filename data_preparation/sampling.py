@@ -7,9 +7,11 @@ from configs.config import Configuration
 from tools.console import Console
 from data_preparation.sampling_tools import (
     sampling_uniform,
+    sampling_uniform_test,
     sampling_stratified,
     sampling_stratified_test,
     sampling_fixed_number,
+    sampling_fixed_number_test,
     load_uvp5,
     load_uvp6,
     load_uvp6_from_csv,
@@ -54,6 +56,8 @@ def sampling(config_path):
         merge_dict = dict(zip(ren['taxon'], ren['regrouped2']))
     elif config.sampling.num_class == 25:
         merge_dict = dict(zip(ren['taxon'], ren['regrouped1']))
+    elif config.sampling.num_class == 2:
+        merge_dict = dict(zip(ren['taxon'], ren['regrouped3']))
     else:
         console.error("Please select correct parameter for class_type")
         sys.exit()
@@ -61,8 +65,12 @@ def sampling(config_path):
     if df1 is not None:
         df1['label'] = df1['label'].map(merge_dict).fillna(df1['label'])
 
-        if config.sampling.test_dataset_sampling == 'stratified':
-            df1_sample_test, df1_train = sampling_stratified_test(df1, config.sampling.test_percent)
+        if config.sampling.test_dataset_sampling == 'fixed':
+            df1_sample_test, df1_train = sampling_fixed_number_test(df1, config.sampling.test_percent_uvp5)
+        elif config.sampling.test_dataset_sampling == 'uniform':
+            df1_sample_test, df1_train = sampling_uniform_test(df1, config.sampling.test_percent_uvp5)
+        elif config.sampling.test_dataset_sampling == 'stratified':
+            df1_sample_test, df1_train = sampling_stratified_test(df1, config.sampling.test_percent_uvp5)
         else:
             console.error("Please select correct parameter for test_dataset_sampling")
             sys.exit()
@@ -84,8 +92,12 @@ def sampling(config_path):
     if df2 is not None:
         df2['label'] = df2['label'].map(merge_dict).fillna(df2['label'])
 
-        if config.sampling.test_dataset_sampling == 'stratified':
-            df2_sample_test, df2_train = sampling_stratified_test(df2, config.sampling.test_percent)
+        if config.sampling.test_dataset_sampling == 'fixed':
+            df2_sample_test, df2_train = sampling_fixed_number_test(df2, config.sampling.test_percent_uvp6)
+        elif config.sampling.test_dataset_sampling == 'uniform':
+            df2_sample_test, df2_train = sampling_uniform_test(df2, config.sampling.test_percent_uvp6)
+        elif config.sampling.test_dataset_sampling == 'stratified':
+            df2_sample_test, df2_train = sampling_stratified_test(df2, config.sampling.test_percent_uvp6)
         else:
             console.error("Please select correct parameter for test_dataset_sampling")
             sys.exit()
