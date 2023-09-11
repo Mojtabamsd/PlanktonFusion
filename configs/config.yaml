@@ -8,7 +8,7 @@ sampling:
   path_uvp5: 'D:\mojmas\files\data\UVP5_images_dataset'
   path_uvp6: 'D:\mojmas\files\data\csv_history\sampled_images5.csv'
   path_output: 'D:\mojmas\files\data\result_sampling'
-  num_class: 2             # choose 13 or 25 classes
+  num_class: 13             # choose 13 or 25 classes
   sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp5: 100
   sampling_percent_uvp6: 100
@@ -23,7 +23,7 @@ training:
   batch_size: 256
   gray: True
   learning_rate: 0.001
-  num_epoch: 20
+  num_epoch: 200
 
 
 prediction:
