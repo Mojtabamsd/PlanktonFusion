@@ -1,0 +1,9 @@
+name: plfu
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.8
+  - pytorch=2.0.1
+  - scikit-learn
+  - scipy
