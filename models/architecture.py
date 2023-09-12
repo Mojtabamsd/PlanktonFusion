@@ -45,3 +45,7 @@ class SimpleCNN(nn.Module):
         final_feature_size = dummy_output.size(2)  # Assuming square feature maps
 
         return final_feature_size
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters())

@@ -5,10 +5,10 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.architecture import SimpleCNN
+from models.architecture import SimpleCNN, count_parameters
 import torch
 import pandas as pd
-from tools.utils import report_to_df
+from tools.utils import report_to_df, memory_usage
 import os
 import shutil
 import numpy as np
@@ -57,7 +57,15 @@ def prediction(config_path, input_path, output_path):
     model = SimpleCNN(num_classes=config.sampling.num_class,
                       gray=config.training.gray,
                       input_size=config.sampling.target_size)
+
+    # Calculate the number of parameters in millions
+    num_params = count_parameters(model) / 1_000_000
+    console.info(f"The model has approximately {num_params:.2f} million parameters.")
+
     model.to(device)
+
+    # test memory usage
+    memory_usage(config, model, device)
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights.pth"

@@ -5,7 +5,7 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.architecture import SimpleCNN
+from models.architecture import SimpleCNN, count_parameters
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -70,6 +70,11 @@ def train_cnn(config_path, input_path, output_path):
     model = SimpleCNN(num_classes=config.sampling.num_class,
                       gray=config.training.gray,
                       input_size=config.sampling.target_size)
+
+    # Calculate the number of parameters in millions
+    num_params = count_parameters(model) / 1_000_000
+    console.info(f"The model has approximately {num_params:.2f} million parameters.")
+
     model.to(device)
 
     # Loss criterion and optimizer
