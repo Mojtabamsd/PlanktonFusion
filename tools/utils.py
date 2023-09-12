@@ -57,7 +57,7 @@ def memory_usage(config, model, device):
         gpu_memory_after = torch.cuda.memory_allocated(device=device)
         gpu_memory_used = gpu_memory_after - gpu_memory_before
 
-        print(f"GPU Memory Used (MB): {gpu_memory_used / (1024 * 1024)}")
+        return f"GPU Memory Used (MB): {gpu_memory_used / (1024 * 1024)}"
     else:
         # Measure CPU memory usage
         cpu_memory_before = psutil.virtual_memory().used
@@ -65,4 +65,4 @@ def memory_usage(config, model, device):
         cpu_memory_after = psutil.virtual_memory().used
         cpu_memory_used = cpu_memory_after - cpu_memory_before
 
-        print(f"CPU Memory Used (MB): {cpu_memory_used / (1024 * 1024)}")
+        return f"CPU Memory Used (MB): {cpu_memory_used / (1024 * 1024)}"

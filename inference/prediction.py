@@ -65,7 +65,7 @@ def prediction(config_path, input_path, output_path):
     model.to(device)
 
     # test memory usage
-    memory_usage(config, model, device)
+    console.info(memory_usage(config, model, device))
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights.pth"

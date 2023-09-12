@@ -9,7 +9,7 @@ from models.architecture import SimpleCNN, count_parameters
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tools.utils import report_to_df, plot_loss
+from tools.utils import report_to_df, plot_loss, memory_usage
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 
@@ -76,6 +76,9 @@ def train_cnn(config_path, input_path, output_path):
     console.info(f"The model has approximately {num_params:.2f} million parameters.")
 
     model.to(device)
+
+    # test memory usage
+    console.info(memory_usage(config, model, device))
 
     # Loss criterion and optimizer
     criterion = nn.CrossEntropyLoss()
