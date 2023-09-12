@@ -66,6 +66,7 @@ def train_cnn(config_path, input_path, output_path):
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
+    console.info(f"Running on:  {device}")
 
     model = SimpleCNN(num_classes=config.sampling.num_class,
                       gray=config.training.gray,
