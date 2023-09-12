@@ -23,10 +23,10 @@ cd PF
 
 ### Train a model
 ```bash
-python main.py training -c 'config_path' -i 'sampling_path' -o 'output_path'
+python main.py training -c ./configs/config.yaml -i 'sampling_path' -o 'output_path'
 ```
 
 ### Test a model
 ```bash
-python main.py prediction -c 'config_path' -i 'training_path' -o 'output_path'
+python main.py prediction -c ./configs/config.yaml -i 'training_path' -o 'output_path'
 ```
