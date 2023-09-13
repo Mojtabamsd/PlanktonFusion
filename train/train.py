@@ -5,7 +5,7 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.architecture import SimpleCNN, ResNetCustom, count_parameters
+from models.architecture import SimpleCNN, ResNetCustom, MobileNetCustom, count_parameters
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -77,6 +77,11 @@ def train_cnn(config_path, input_path, output_path):
         model = ResNetCustom(num_classes=config.sampling.num_class,
                              input_size=config.sampling.target_size,
                              gray=config.training.gray)
+
+    elif config.training.architecture_type == 'mobilenet':
+        model = MobileNetCustom(num_classes=config.sampling.num_class,
+                                input_size=config.sampling.target_size,
+                                gray=config.training.gray)
     else:
         console.quit("Please select correct parameter for architecture_type")
 

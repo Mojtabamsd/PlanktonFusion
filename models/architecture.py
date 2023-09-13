@@ -81,5 +81,35 @@ class ResNetCustom(nn.Module):
         return self.resnet(x)
 
 
+class MobileNetCustom(nn.Module):
+    def __init__(self, num_classes=13, input_size=(224, 224), gray=False):
+        super(MobileNetCustom, self).__init__()
+
+        if gray:
+            input_channels = 1
+        else:
+            input_channels = 3
+
+        # Load a pre-trained MobileNetV2 model
+        self.mobilenet = models.mobilenet_v2(pretrained=False)
+
+        # Modify the final classification layer to match your output size
+        in_features = self.mobilenet.classifier[1].in_features
+        self.mobilenet.classifier = nn.Sequential(
+            nn.Linear(in_features, num_classes)
+        )
+
+        # Adjust the first convolutional layer to accept the specified number of channels
+        self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+
+        # # Adjust the input size if it's not 224x224
+        # if input_size != (224, 224):
+        #     self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+        #     self.mobilenet.classifier[0] = nn.Linear(in_features, num_classes)
+
+    def forward(self, x):
+        return self.mobilenet(x)
+
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters())

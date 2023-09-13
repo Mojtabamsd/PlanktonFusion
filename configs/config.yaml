@@ -19,7 +19,7 @@ sampling:
 
 
 training:
-  architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18'
+  architecture_type: 'mobilenet' # choose 'simple_cnn' or 'resnet18' or 'mobilenet'
   batch_size: 256
   gray: True
   learning_rate: 0.001
