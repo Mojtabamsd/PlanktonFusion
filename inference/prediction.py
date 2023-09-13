@@ -5,7 +5,7 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.architecture import SimpleCNN, ResNetCustom, count_parameters
+from models.architecture import SimpleCNN, ResNetCustom, MobileNetCustom, count_parameters
 import torch
 import pandas as pd
 from tools.utils import report_to_df, memory_usage
@@ -65,6 +65,10 @@ def prediction(config_path, input_path, output_path):
         model = ResNetCustom(num_classes=config.sampling.num_class,
                              input_size=config.sampling.target_size,
                              gray=config.training.gray)
+    elif config.training.architecture_type == 'mobilenet':
+        model = MobileNetCustom(num_classes=config.sampling.num_class,
+                                input_size=config.sampling.target_size,
+                                gray=config.training.gray)
     else:
         console.quit("Please select correct parameter for architecture_type")
 
