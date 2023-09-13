@@ -78,7 +78,7 @@ def prediction(config_path, input_path, output_path):
     console.info(memory_usage(config, model, device))
 
     # Save the model's state dictionary to a file
-    saved_weights = "model_weights.pth"
+    saved_weights = "model_weights_final.pth"
     training_path = Path(config.prediction.path_model)
     saved_weights_file = training_path / saved_weights
 

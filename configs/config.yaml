@@ -24,6 +24,7 @@ training:
   gray: True
   learning_rate: 0.001
   num_epoch: 40
+  save_model_every_n_epoch: 20
 
 
 prediction:

@@ -115,16 +115,25 @@ def train_cnn(config_path, input_path, output_path):
         loss_values.append(average_loss)
         console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
 
+        # save intermediate weight
+        if (epoch + 1) % config.training.save_model_every_n_epoch == 0:
+            # Save the model weights
+            saved_weights = f'model_weights_epoch_{epoch + 1}.pth'
+            saved_weights_file = training_path / saved_weights
+
+            console.info(f"Model weights saved to {saved_weights_file}")
+            torch.save(model.state_dict(), saved_weights_file)
+
     # Create a plot of the loss values
     plot_loss(loss_values, config)
 
     # Save the model's state dictionary to a file
-    saved_weights = "model_weights.pth"
+    saved_weights = "model_weights_final.pth"
     saved_weights_file = training_path / saved_weights
 
     torch.save(model.state_dict(), saved_weights_file)
 
-    console.info(f"Model weights saved to {saved_weights_file}")
+    console.info(f"Final model weights saved to {saved_weights_file}")
 
     # Create uvp dataset datasets for training and validation
     train_dataset.phase = 'val'
