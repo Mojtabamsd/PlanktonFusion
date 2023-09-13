@@ -19,11 +19,11 @@ sampling:
 
 
 training:
-  architecture_type: 'cnn'
+  architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18'
   batch_size: 256
   gray: True
   learning_rate: 0.001
-  num_epoch: 200
+  num_epoch: 40
 
 
 prediction:

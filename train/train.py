@@ -5,7 +5,7 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.architecture import SimpleCNN, count_parameters
+from models.architecture import SimpleCNN, ResNetCustom, count_parameters
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -68,9 +68,17 @@ def train_cnn(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    model = SimpleCNN(num_classes=config.sampling.num_class,
-                      gray=config.training.gray,
-                      input_size=config.sampling.target_size)
+    if config.training.architecture_type == 'simple_cnn':
+        model = SimpleCNN(num_classes=config.sampling.num_class,
+                          input_size=config.sampling.target_size,
+                          gray=config.training.gray)
+
+    elif config.training.architecture_type == 'resnet18':
+        model = ResNetCustom(num_classes=config.sampling.num_class,
+                             input_size=config.sampling.target_size,
+                             gray=config.training.gray)
+    else:
+        console.quit("Please select correct parameter for architecture_type")
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000

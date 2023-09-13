@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
 
 
 class SimpleCNN(nn.Module):
@@ -45,6 +46,39 @@ class SimpleCNN(nn.Module):
         final_feature_size = dummy_output.size(2)  # Assuming square feature maps
 
         return final_feature_size
+
+
+class ResNetCustom(nn.Module):
+    def __init__(self, num_classes=13, input_size=(224, 224), gray=False):
+        super(ResNetCustom, self).__init__()
+
+        if gray:
+            input_channels = 1
+        else:
+            input_channels = 3
+
+        # Load a pre-trained ResNet model
+        self.resnet = models.resnet18(pretrained=False)
+
+        # Freeze the layers in the pre-trained model (if needed)
+        # for param in self.resnet.parameters():
+        #     param.requires_grad = False
+
+        # Modify the final classification layer to match your output size
+        in_features = self.resnet.fc.in_features
+        self.resnet.fc = nn.Sequential(
+            nn.Linear(in_features, num_classes)
+        )
+
+        # Adjust the first convolutional layer to accept the specified number of channels
+        self.resnet.conv1 = nn.Conv2d(input_channels, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+
+        # Adjust the input size if it's not 224x224
+        if input_size != (224, 224):
+            self.resnet.avgpool = nn.AdaptiveAvgPool2d(1)  # Change global average pooling layer
+
+    def forward(self, x):
+        return self.resnet(x)
 
 
 def count_parameters(model):
