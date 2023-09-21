@@ -4,7 +4,7 @@ import torchvision.models as models
 
 
 class SimpleCNN(nn.Module):
-    def __init__(self, num_classes=13, input_size=(224, 224), gray=False):
+    def __init__(self, num_classes=13, input_size=(227, 227), gray=False):
         super(SimpleCNN, self).__init__()
 
         self.input_size = input_size
@@ -49,7 +49,7 @@ class SimpleCNN(nn.Module):
 
 
 class ResNetCustom(nn.Module):
-    def __init__(self, num_classes=13, input_size=(224, 224), gray=False):
+    def __init__(self, num_classes=13, input_size=(227, 227), gray=False, pretrained=None):
         super(ResNetCustom, self).__init__()
 
         if gray:
@@ -58,7 +58,7 @@ class ResNetCustom(nn.Module):
             input_channels = 3
 
         # Load a pre-trained ResNet model
-        self.resnet = models.resnet18(pretrained=False)
+        self.resnet = models.resnet18(weights=pretrained)
 
         # Freeze the layers in the pre-trained model (if needed)
         # for param in self.resnet.parameters():
@@ -71,18 +71,15 @@ class ResNetCustom(nn.Module):
         )
 
         # Adjust the first convolutional layer to accept the specified number of channels
-        self.resnet.conv1 = nn.Conv2d(input_channels, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-
-        # Adjust the input size if it's not 224x224
-        if input_size != (224, 224):
-            self.resnet.avgpool = nn.AdaptiveAvgPool2d(1)  # Change global average pooling layer
+        self.resnet.conv1 = nn.Conv2d(input_channels, 64, kernel_size=(7, 7),
+                                      stride=(2, 2), padding=(3, 3), bias=False)
 
     def forward(self, x):
         return self.resnet(x)
 
 
 class MobileNetCustom(nn.Module):
-    def __init__(self, num_classes=13, input_size=(224, 224), gray=False):
+    def __init__(self, num_classes=13, input_size=(227, 227), gray=False, pretrained=None):
         super(MobileNetCustom, self).__init__()
 
         if gray:
@@ -91,7 +88,7 @@ class MobileNetCustom(nn.Module):
             input_channels = 3
 
         # Load a pre-trained MobileNetV2 model
-        self.mobilenet = models.mobilenet_v2(pretrained=False)
+        self.mobilenet = models.mobilenet_v2(weights=pretrained)
 
         # Modify the final classification layer to match your output size
         in_features = self.mobilenet.classifier[1].in_features
@@ -100,15 +97,37 @@ class MobileNetCustom(nn.Module):
         )
 
         # Adjust the first convolutional layer to accept the specified number of channels
-        self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
-
-        # # Adjust the input size if it's not 224x224
-        # if input_size != (224, 224):
-        #     self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
-        #     self.mobilenet.classifier[0] = nn.Linear(in_features, num_classes)
+        self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 32, kernel_size=(3, 3),
+                                                  stride=(2, 2), padding=(1, 1), bias=False)
 
     def forward(self, x):
         return self.mobilenet(x)
+
+
+class ShuffleNetCustom(nn.Module):
+    def __init__(self, num_classes=13, input_size=(227, 227), gray=False, pretrained=None):
+        super(ShuffleNetCustom, self).__init__()
+
+        if gray:
+            input_channels = 1
+        else:
+            input_channels = 3
+
+        # Load a pre-trained ShuffleNet model
+        self.shufflenet = models.shufflenet_v2_x1_0(weights=pretrained)
+
+        # Modify the final classification layer to match your output size
+        in_features = self.shufflenet.fc.in_features
+        self.shufflenet.fc = nn.Sequential(
+            nn.Linear(in_features, num_classes)
+        )
+
+        # Adjust the first convolutional layer to accept the specified number of channels
+        self.shufflenet.conv1 = nn.Conv2d(input_channels, 24, kernel_size=(3, 3),
+                                          stride=(2, 2), padding=(1, 1), bias=False)
+
+    def forward(self, x):
+        return self.shufflenet(x)
 
 
 def count_parameters(model):
