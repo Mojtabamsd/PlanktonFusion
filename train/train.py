@@ -5,7 +5,7 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.architecture import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
+from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
 import torch
 import torch.nn as nn
 import torch.optim as optim
