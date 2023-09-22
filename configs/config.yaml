@@ -10,22 +10,30 @@ sampling:
   path_output: 'D:\mojmas\files\data\result_sampling'
   num_class: 13             # choose 13 or 25 classes
   sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
-  sampling_percent_uvp5: 100
-  sampling_percent_uvp6: 100
+  sampling_percent_uvp5: 10000
+  sampling_percent_uvp6: 10000
   target_size: [227, 227]  #image target size
-  test_dataset_sampling: 'fixed' # choose 'fixed' or 'uniform' or 'stratified',  it created [test_percent] of dataset for testing algorithm
+  test_dataset_sampling: 'fixed' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
   test_percent_uvp5: 100  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
   test_percent_uvp6: 100
 
 
 training:
-  architecture_type: 'mobilenet' # choose 'simple_cnn' or 'resnet18' or 'mobilenet'
-  batch_size: 256
+  architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet'
+  batch_size: 32
   gray: True
   learning_rate: 0.001
-  num_epoch: 40
+  num_epoch: 60
   save_model_every_n_epoch: 20
 
+autoencoder:
+  architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder'
+  latent_dim: 16
+  batch_size: 32
+  gray: True
+  learning_rate: 0.001
+  num_epoch: 60
+  save_model_every_n_epoch: 20
 
 prediction:
   path_model: 'D:\mojmas\files\data\result_sampling\training20230821093231'
