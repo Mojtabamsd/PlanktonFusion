@@ -5,6 +5,7 @@ from tools import console
 from data_preparation.sampling import sampling
 from train.train import train_cnn
 from inference.prediction import prediction
+from unsupervised.train_autoencoder import train_autoencoder
 
 
 def add_arguments(obj):
@@ -57,6 +58,13 @@ def main(args=None):
     add_arguments(parser_prediction)
     parser_prediction.set_defaults(func=call_prediction)
 
+    # autoencoder
+    parser_autoencoder = subparsers.add_parser(
+        "autoencoder", help="Train an Autoencoder"
+    )
+    add_arguments(parser_autoencoder)
+    parser_autoencoder.set_defaults(func=call_autoencoder)
+
     if len(sys.argv) == 1 and args is None:
         # Show help if no args provided
         parser.print_help(sys.stderr)
@@ -75,6 +83,10 @@ def call_training(args):
 
 def call_prediction(args):
     prediction(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_autoencoder(args):
+    train_autoencoder(args.configuration_file, args.input_folder, args.output_folder)
 
 
 if __name__ == "__main__":
