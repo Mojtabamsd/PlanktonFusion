@@ -136,7 +136,7 @@ def train_cnn(config_path, input_path, output_path):
             torch.save(model.state_dict(), saved_weights_file)
 
     # Create a plot of the loss values
-    plot_loss(loss_values, config)
+    plot_loss(loss_values, num_epoch=config.training.num_epoch, training_path=config.training_path)
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"

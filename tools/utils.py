@@ -21,17 +21,17 @@ def report_to_df(report):
     return df
 
 
-def plot_loss(loss_values, config):
+def plot_loss(loss_values, num_epoch, training_path):
     # Create a plot of the loss values
     plt.figure(figsize=(10, 5))
-    plt.plot(np.arange(1, config.training.num_epoch + 1), loss_values, label='Training Loss')
+    plt.plot(np.arange(1, num_epoch + 1), loss_values, label='Training Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training Loss Over Epochs')
     plt.legend()
 
     # Specify the path where you want to save the plot
-    plot_path = config.training_path / 'loss_plot.png'
+    plot_path = training_path / 'loss_plot.png'
 
     # Save the plot to the specified path
     plt.savefig(plot_path)
