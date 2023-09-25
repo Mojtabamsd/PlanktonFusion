@@ -32,7 +32,7 @@ def train_autoencoder(config_path, input_path, output_path):
         console.quit("Input csv file does not exist.")
 
     time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    rel_training_path = Path("training" + time_str)
+    rel_training_path = Path("autoencoder_training" + time_str)
     training_path = output_folder / rel_training_path
     config.training_path = training_path
     if not training_path.exists():
@@ -95,8 +95,9 @@ def train_autoencoder(config_path, input_path, output_path):
         model.train()
         running_loss = 0.0
 
-        for images, labels, _ in train_loader:
-            images, labels = images.to(device), labels.to(device)
+        for images, _, _ in train_loader:
+            images = images.to(device)
+            labels = images
 
             optimizer.zero_grad()
             outputs, _ = model(images)
@@ -120,7 +121,7 @@ def train_autoencoder(config_path, input_path, output_path):
             torch.save(model.state_dict(), saved_weights_file)
 
     # Create a plot of the loss values
-    plot_loss(loss_values, config)
+    plot_loss(loss_values, num_epoch=config.autoencoder.num_epoch, training_path=config.training_path)
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"
