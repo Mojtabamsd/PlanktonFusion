@@ -47,7 +47,6 @@ classifier:
   feature_type: 'autoencoder'
   batch_size: 32
   classifier_type: 'svm'
-  mode: 'train' # choose 'train' or 'test'
 
 
 #synthetic:
