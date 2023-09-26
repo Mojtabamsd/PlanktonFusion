@@ -6,6 +6,7 @@ from data_preparation.sampling import sampling
 from train.train import train_cnn
 from inference.prediction import prediction
 from feature_extraction.train_autoencoder import train_autoencoder
+from feature_extraction.classifier import classifier
 
 
 def add_arguments(obj):
@@ -65,6 +66,13 @@ def main(args=None):
     add_arguments(parser_autoencoder)
     parser_autoencoder.set_defaults(func=call_autoencoder)
 
+    # classifier
+    parser_classifier = subparsers.add_parser(
+        "classifier", help="Train a classifier from features"
+    )
+    add_arguments(parser_classifier)
+    parser_classifier.set_defaults(func=call_classifier)
+
     if len(sys.argv) == 1 and args is None:
         # Show help if no args provided
         parser.print_help(sys.stderr)
@@ -87,6 +95,10 @@ def call_prediction(args):
 
 def call_autoencoder(args):
     train_autoencoder(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_classifier(args):
+    classifier(args.configuration_file, args.input_folder, args.output_folder)
 
 
 if __name__ == "__main__":

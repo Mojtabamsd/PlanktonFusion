@@ -26,6 +26,12 @@ training:
   num_epoch: 60
   save_model_every_n_epoch: 20
 
+
+prediction:
+  path_model: 'D:\mojmas\files\data\result_sampling\training20230821093231'
+  batch_size: 2
+
+
 autoencoder:
   architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder'
   latent_dim: 16
@@ -35,9 +41,12 @@ autoencoder:
   num_epoch: 60
   save_model_every_n_epoch: 20
 
-prediction:
-  path_model: 'D:\mojmas\files\data\result_sampling\training20230821093231'
-  batch_size: 2
+
+classifier:
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20230926105447'  # if it's not NN write None
+  feature_type: 'autoencoder'
+  classifier_type: 'svm'
+  mode: 'train' # choose 'train' or 'test'
 
 
 #synthetic:

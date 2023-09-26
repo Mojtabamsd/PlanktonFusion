@@ -36,6 +36,12 @@ class TrainingConfig:
         self.save_model_every_n_epoch = save_model_every_n_epoch
 
 
+class PredictionConfig:
+    def __init__(self, path_model, batch_size):
+        self.path_model = path_model
+        self.batch_size = batch_size
+
+
 class AutoencoderConfig:
     def __init__(self, architecture_type, latent_dim, batch_size, gray, learning_rate, num_epoch, save_model_every_n_epoch):
         self.architecture_type = architecture_type
@@ -47,10 +53,12 @@ class AutoencoderConfig:
         self.save_model_every_n_epoch = save_model_every_n_epoch
 
 
-class PredictionConfig:
-    def __init__(self, path_model, batch_size):
+class ClassifierConfig:
+    def __init__(self, path_model, feature_type, classifier_type, mode):
         self.path_model = path_model
-        self.batch_size = batch_size
+        self.feature_type = feature_type
+        self.classifier_type = classifier_type
+        self.mode = mode
 
 
 class Configuration:
@@ -63,8 +71,9 @@ class Configuration:
         self.base = BaseConfig(**config_data['base'])
         self.sampling = SamplingConfig(**config_data['sampling'])
         self.training = TrainingConfig(**config_data['training'])
-        self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
         self.prediction = PredictionConfig(**config_data['prediction'])
+        self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
+        self.classifier = ClassifierConfig(**config_data['classifier'])
 
     def write(self, filename):
         filename = Path(filename)
