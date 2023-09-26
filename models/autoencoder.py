@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torchvision.models as models
+import torch.nn.functional as F
 
 
 class ConvAutoencoder(nn.Module):
@@ -35,14 +35,14 @@ class ConvAutoencoder(nn.Module):
         # Linear Transformation
         self.linear_en = nn.Sequential(
             nn.Linear(self.calculate_flatten_size().numel(), self.latent_dim),
-            # nn.BatchNorm1d(4096),
+            nn.BatchNorm1d(self.latent_dim),
             nn.ReLU(),
 
         )
 
         self.linear_de = nn.Sequential(
             nn.Linear(self.latent_dim, self.calculate_flatten_size().numel()),
-            # nn.BatchNorm1d(self.latent_dim),
+            nn.BatchNorm1d(self.calculate_flatten_size().numel()),
             nn.ReLU()
 
         )
@@ -80,4 +80,5 @@ class ConvAutoencoder(nn.Module):
         size_out = self.calculate_flatten_size(x.device)
         x = x.view(x.size(0), size_out[1], size_out[2], size_out[3])
         x = self.decoder(x)
+        x = F.pad(x, (0, self.input_size[1] - x.size(3), 0, self.input_size[0] - x.size(2)))
         return x, latent
