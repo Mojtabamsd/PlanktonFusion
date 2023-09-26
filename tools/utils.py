@@ -46,7 +46,7 @@ def plot_loss(loss_values, num_epoch, training_path):
 def memory_usage(config, model, device):
 
     # Create a dummy input tensor
-    input_tensor = torch.randn((1, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
+    input_tensor = torch.randn((2, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
     input_tensor = input_tensor.to(device)
 
     # Measure memory usage
