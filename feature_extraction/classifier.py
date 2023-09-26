@@ -51,7 +51,7 @@ def classifier(config_path, input_path, output_path):
 
     # Define data transformations
     transform = transforms.Compose([
-        transforms.Resize(config.sampling.target_size[0], config.sampling.target_size[1]),  # Resize to desired input size
+        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),  # Resize to desired input size
         transforms.ToTensor(),
     ])
 
@@ -127,7 +127,7 @@ def train_svm(model, dataloader, prediction_path, device):
         report = classification_report(
             y_true=y_test,
             y_pred=y_pred,
-            target_names=labels,  # Replace with your actual label names
+            target_names=dataloader.dataset.label_to_int,
             digits=6,
         )
 
