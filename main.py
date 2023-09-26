@@ -5,7 +5,7 @@ from tools import console
 from data_preparation.sampling import sampling
 from train.train import train_cnn
 from inference.prediction import prediction
-from unsupervised.train_autoencoder import train_autoencoder
+from feature_extraction.train_autoencoder import train_autoencoder
 
 
 def add_arguments(obj):
