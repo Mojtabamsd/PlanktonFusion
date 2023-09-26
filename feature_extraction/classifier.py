@@ -65,7 +65,7 @@ def classifier(config_path, input_path, output_path):
                                 gray=config.autoencoder.gray)
 
     else:
-        console.quit("Please select correct parameter for architecture_type")
+        console.quit("Please select correct parameter for feature_type")
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
@@ -94,10 +94,10 @@ def classifier(config_path, input_path, output_path):
 
     dataloader = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
 
-    train_svm(model, dataloader, classification_path, device)
+    train_test_classifier(model, dataloader, classification_path, config, device, console)
 
 
-def train_svm(model, dataloader, prediction_path, device):
+def train_test_classifier(model, dataloader, prediction_path, config, device, console):
     model.eval()
 
     all_labels = []
@@ -117,12 +117,16 @@ def train_svm(model, dataloader, prediction_path, device):
         x_train, x_test, y_train, y_test = train_test_split(latent_vectors,
                                                             all_labels, test_size=0.2, random_state=42)
 
-        # Train SVM classifier
-        svm_classifier = SVC(kernel='rbf')
-        svm_classifier.fit(x_train, y_train)
+        if config.classifier.classifier_type == 'svm':
+            # Train SVM classifier
+            svm_classifier = SVC(kernel='rbf')
+            svm_classifier.fit(x_train, y_train)
 
-        # Evaluate the SVM classifier
-        y_pred = svm_classifier.predict(x_test)
+            # Evaluate the SVM classifier
+            y_pred = svm_classifier.predict(x_test)
+
+        else:
+            console.quit("Please select correct parameter for classifier_type")
 
         report = classification_report(
             y_true=y_test,
@@ -144,7 +148,7 @@ def train_svm(model, dataloader, prediction_path, device):
         conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
         df.to_csv(conf_mtx_filename)
 
-    model.train()
+
 
 
 
