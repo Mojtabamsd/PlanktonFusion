@@ -4,10 +4,11 @@ import torch.nn.functional as F
 
 
 class ConvAutoencoder(nn.Module):
-    def __init__(self, latent_dim=16, input_size=(227, 227), gray=False):
+    def __init__(self, latent_dim=16, input_size=(227, 227), gray=False, encoder_mode=False):
         super(ConvAutoencoder, self).__init__()
         self.latent_dim = latent_dim
         self.input_size = input_size
+        self.encoder_mode = encoder_mode
         if gray:
             self.input_channels = 1
         else:
@@ -75,6 +76,9 @@ class ConvAutoencoder(nn.Module):
         x = self.encoder(x)
         x = x.view(x.size(0), -1)  # Flatten for linear transformation
         latent = self.linear_en(x)
+
+        if self.encoder_mode:
+            return latent
 
         x = self.linear_de(latent)
         size_out = self.calculate_flatten_size(x.device)
@@ -270,11 +274,11 @@ class ConvAutoencoderAlex(nn.Module):
             for param in layer.parameters():
                 param.requires_grad = True
 
-        h, idx_mp_1, idx_mp_2, idx_mp_3 = self.encode(x)
+        latent, idx_mp_1, idx_mp_2, idx_mp_3 = self.encode(x)
 
         if self.encoder_mode:
-            return h
+            return latent
 
-        x = self.decode(h, idx_mp_1, idx_mp_2, idx_mp_3)
+        x = self.decode(latent, idx_mp_1, idx_mp_2, idx_mp_3)
 
-        return x, h
+        return x, latent
