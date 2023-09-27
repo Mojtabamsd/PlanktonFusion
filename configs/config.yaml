@@ -33,7 +33,7 @@ prediction:
 
 
 autoencoder:
-  architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder'
+  architecture_type: 'conv_autoencoder_alex' # choose 'conv_autoencoder' or 'conv_autoencoder_alex'
   latent_dim: 16
   batch_size: 32
   gray: True
