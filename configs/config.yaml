@@ -44,7 +44,7 @@ autoencoder:
 
 classifier:
   path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20230926105447'  # if it's not NN write None
-  feature_type: 'autoencoder'
+  feature_type: 'conv_autoencoder_alex'
   batch_size: 32
   classifier_type: 'svm'
 
