@@ -14,26 +14,30 @@ class ConvAutoencoder(nn.Module):
         else:
             self.input_channels = 3
 
+        self.num_ch1 = 64
+        self.num_ch2 = 192
+        self.num_ch3 = 256
+
         # Encoder
         self.encoder1 = nn.Sequential(
-            nn.Conv2d(self.input_channels, 32, kernel_size=5, stride=2, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(self.input_channels, self.num_ch1, kernel_size=5, stride=2, padding=1),
+            nn.BatchNorm2d(self.num_ch1),
             nn.ReLU(),
         )
 
-        self.encoder_pool1 = nn.MaxPool2d(kernel_size=3, stride=2, return_indices=True)
+        self.encoder_pool1 = nn.MaxPool2d(kernel_size=3, stride=2, return_indices=False)
 
         self.encoder2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(self.num_ch1, self.num_ch2, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(self.num_ch2),
             nn.ReLU(),
         )
 
-        self.encoder_pool2 = nn.MaxPool2d(kernel_size=3, stride=2, return_indices=True)
+        self.encoder_pool2 = nn.MaxPool2d(kernel_size=3, stride=2, return_indices=False)
 
         self.encoder3 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(self.num_ch2, self.num_ch3, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(self.num_ch3),
             nn.ReLU(),
         )
 
@@ -52,48 +56,27 @@ class ConvAutoencoder(nn.Module):
 
         )
 
-        # # Linear Transformation
-        # self.linear_en = nn.Sequential(
-        #     nn.Linear(self.calculate_flatten_size().numel(), 4096),
-        #     nn.BatchNorm1d(4096),
-        #     nn.ReLU(),
-        #
-        #     nn.Linear(4096, self.latent_dim),
-        #     nn.BatchNorm1d(self.latent_dim),
-        #     nn.ReLU(),
-        #
-        # )
-        #
-        # self.linear_de = nn.Sequential(
-        #     nn.Linear(self.latent_dim, 4096),
-        #     nn.BatchNorm1d(4096),
-        #     nn.ReLU(),
-        #
-        #     nn.Linear(4096, self.calculate_flatten_size().numel()),
-        #     nn.BatchNorm1d(self.calculate_flatten_size().numel()),
-        #     nn.ReLU(),
-        #
-        # )
-
         # Decoder
         self.decoder3 = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
+            nn.ConvTranspose2d(self.num_ch3, self.num_ch2, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(self.num_ch2),
             nn.ReLU(),
         )
 
         self.decoder_un_pool2 = nn.MaxUnpool2d(kernel_size=3, stride=2)
+        self.decoder_up_sample2 = nn.UpsamplingBilinear2d(size=(28, 28))
 
         self.decoder2 = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=0),
-            nn.BatchNorm2d(32),
+            nn.ConvTranspose2d(self.num_ch2, self.num_ch1, kernel_size=4, stride=2, padding=0),
+            nn.BatchNorm2d(self.num_ch1),
             nn.ReLU(),
         )
 
         self.decoder_un_pool1 = nn.MaxUnpool2d(kernel_size=3, stride=2)
+        self.decoder_up_sample1 = nn.UpsamplingBilinear2d(size=(113, 113))
 
         self.decoder1 = nn.Sequential(
-            nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(self.num_ch1, self.input_channels, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.Sigmoid(),
         )
@@ -102,18 +85,18 @@ class ConvAutoencoder(nn.Module):
         with torch.no_grad():
             dummy_input = torch.zeros(1, self.input_channels, self.input_size[0], self.input_size[1]).to(device)
             x = self.encoder1(dummy_input)
-            x, _ = self.encoder_pool1(x)
+            x = self.encoder_pool1(x)
             x = self.encoder2(x)
-            # x, _ = self.encoder_pool2(x)
+            x = self.encoder_pool2(x)
             encoder_output = self.encoder3(x)
             # return encoder_output.view(encoder_output.size(0), -1).shape[1]
             return encoder_output.size()
 
     def forward(self, x):
         x = self.encoder1(x)
-        x, idx_mp_1 = self.encoder_pool1(x)
+        x = self.encoder_pool1(x)
         x = self.encoder2(x)
-        # x, idx_mp_2 = self.encoder_pool2(x)
+        x = self.encoder_pool2(x)
         x = self.encoder3(x)
         x = x.view(x.size(0), -1)  # Flatten for linear transformation
         latent = self.linear_en(x)
@@ -125,10 +108,12 @@ class ConvAutoencoder(nn.Module):
         size_out = self.calculate_flatten_size(x.device)
         x = x.view(x.size(0), size_out[1], size_out[2], size_out[3])
         x = self.decoder3(x)
-        # x = self.decoder_un_pool2(x, idx_mp_2)
+        # x = self.decoder_un_pool2(x)
+        x = self.decoder_up_sample2(x)
         x = self.decoder2(x)
         # x = F.pad(x, (0, 3, 0, 3))
-        x = self.decoder_un_pool1(x, idx_mp_1)
+        # x = self.decoder_un_pool1(x)
+        x = self.decoder_up_sample1(x)
         x = self.decoder1(x)
 
         x = F.pad(x, (0, self.input_size[1] - x.size(3), 0, self.input_size[0] - x.size(2)))
