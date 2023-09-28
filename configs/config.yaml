@@ -33,9 +33,9 @@ prediction:
 
 
 autoencoder:
-  architecture_type: 'conv_autoencoder_alex' # choose 'conv_autoencoder' or 'conv_autoencoder_alex'
+  architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder' or 'conv_autoencoder_alex'
   latent_dim: 16
-  batch_size: 32
+  batch_size: 256
   gray: True
   learning_rate: 0.001
   num_epoch: 60
@@ -44,7 +44,7 @@ autoencoder:
 
 classifier:
   path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20230926105447'  # if it's not NN write None
-  feature_type: 'conv_autoencoder_alex'
+  feature_type: 'conv_autoencoder'
   batch_size: 32
   classifier_type: 'svm'
 
