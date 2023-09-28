@@ -33,18 +33,41 @@ class ConvAutoencoder(nn.Module):
             nn.ReLU(),
         )
 
+        # # Linear Transformation
+        # self.linear_en = nn.Sequential(
+        #     nn.Linear(self.calculate_flatten_size().numel(), self.latent_dim),
+        #     nn.BatchNorm1d(self.latent_dim),
+        #     nn.ReLU(),
+        #
+        # )
+        #
+        # self.linear_de = nn.Sequential(
+        #     nn.Linear(self.latent_dim, self.calculate_flatten_size().numel()),
+        #     nn.BatchNorm1d(self.calculate_flatten_size().numel()),
+        #     nn.ReLU()
+        #
+        # )
+
         # Linear Transformation
         self.linear_en = nn.Sequential(
-            nn.Linear(self.calculate_flatten_size().numel(), self.latent_dim),
+            nn.Linear(self.calculate_flatten_size().numel(), 4096),
+            nn.BatchNorm1d(4096),
+            nn.ReLU(),
+
+            nn.Linear(4096, self.latent_dim),
             nn.BatchNorm1d(self.latent_dim),
             nn.ReLU(),
 
         )
 
         self.linear_de = nn.Sequential(
-            nn.Linear(self.latent_dim, self.calculate_flatten_size().numel()),
+            nn.Linear(self.latent_dim, 4096),
+            nn.BatchNorm1d(4096),
+            nn.ReLU(),
+
+            nn.Linear(4096, self.calculate_flatten_size().numel()),
             nn.BatchNorm1d(self.calculate_flatten_size().numel()),
-            nn.ReLU()
+            nn.ReLU(),
 
         )
 
@@ -205,7 +228,7 @@ class ConvAutoencoderAlex(nn.Module):
             nn.ConvTranspose2d(64, self.input_channels, kernel_size=11, stride=4, padding=2),
         )
 
-    def encode(self, x, get_mid=True):
+    def encode(self, x):
         # encoder
         x = self.encoder_conv1(x)  # (3, 227, 227 ->) 64, 56, 56
         x, idx_mp_1 = self.encoder_pool1(x)  # 64, 27, 27
