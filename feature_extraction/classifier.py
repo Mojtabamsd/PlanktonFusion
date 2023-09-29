@@ -6,7 +6,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
-from models.autoencoder import ConvAutoencoder, ConvAutoencoderAlex
+from models.autoencoder import ConvAutoencoder
 import torch
 import pandas as pd
 from tools.utils import report_to_df, memory_usage
@@ -63,11 +63,6 @@ def classifier(config_path, input_path, output_path):
         model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
                                 input_size=config.sampling.target_size,
                                 gray=config.autoencoder.gray)
-
-    elif config.classifier.feature_type == 'conv_autoencoder_alex':
-        model = ConvAutoencoderAlex(latent_dim=config.autoencoder.latent_dim,
-                                    input_size=config.sampling.target_size,
-                                    gray=config.autoencoder.gray)
 
     else:
         console.quit("Please select correct parameter for feature_type")
