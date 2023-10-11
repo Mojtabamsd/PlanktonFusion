@@ -166,7 +166,7 @@ def load_uvp6(path):
 
     df['object_id'] = df['object_id'].astype(int)
     df['path'] = path + '\\imgs\\' + df['taxon'].astype(str) + '\\' + df['object_id'].astype(str) + '.png'
-    df['relative_path'] = 'output\\' + df['object_id'].astype(str) + '.png'
+    df['relative_path'] = 'output/' + df['object_id'].astype(str) + '.png'
 
     df = df.drop('taxon', axis=1)
 
@@ -201,7 +201,6 @@ def load_uvp6_from_csv(csv_path):
     dir1_ = r'D:\mojmas\files\data'
     df['relative_path'] = df['relative_path'].str.replace(r'\\', '/')
     df['path'] = dir1_ + r'\\' + df['relative_path'].astype(str)
-
     return df
 
 
@@ -212,8 +211,14 @@ def copy_image_from_df(df, out_dir, target_size=None, cutting_ruler=False, inver
 
     for index, row in tqdm(df.iterrows()):
         image_path = row['path']
-        image_filename = os.path.basename(image_path)
+        # image_filename = os.path.basename(image_path)
+        image_filename = row['relative_path']
+        image_filename = image_filename.replace('output/', '', 1)
         target_path = os.path.join(out_dir, image_filename)
+        dir_path = os.path.dirname(target_path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+
         img = Image.open(image_path)
 
         if cutting_ruler:

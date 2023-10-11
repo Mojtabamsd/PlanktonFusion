@@ -9,11 +9,12 @@ class BaseConfig:
 
 
 class SamplingConfig:
-    def __init__(self, path_uvp5, path_uvp6, path_output, uvp_type, num_class,
+    def __init__(self, path_uvp5, path_uvp6, path_uvp6_csv, path_output, uvp_type, num_class,
                  sampling_method, sampling_percent_uvp5, sampling_percent_uvp6, target_size,
-                 test_dataset_sampling, test_percent_uvp6, test_percent_uvp5):
+                 test_dataset_sampling, test_percent_uvp6, test_percent_uvp5, create_folder):
         self.path_uvp5 = path_uvp5
         self.path_uvp6 = path_uvp6
+        self.path_uvp6_csv = path_uvp6_csv
         self.path_output = path_output
         self.uvp_type = uvp_type
         self.num_class = num_class
@@ -24,6 +25,7 @@ class SamplingConfig:
         self.test_dataset_sampling = test_dataset_sampling
         self.test_percent_uvp6 = test_percent_uvp6
         self.test_percent_uvp5 = test_percent_uvp5
+        self.create_folder = create_folder
 
 
 class TrainingConfig:

@@ -6,7 +6,8 @@ base:
 sampling:
   uvp_type: 'UVP6'          # choose 'UVP5' or 'UVP6' or 'BOTH' merge both uvp
   path_uvp5: 'D:\mojmas\files\data\UVP5_images_dataset'
-  path_uvp6: 'D:\mojmas\files\data\csv_history\sampled_images5.csv'
+  path_uvp6: 'D:\mojmas\files\data\UVP6Net'
+  path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
   path_output: 'D:\mojmas\files\data\result_sampling'
   num_class: 13             # choose 13 or 25 classes
   sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
@@ -16,6 +17,7 @@ sampling:
   test_dataset_sampling: 'fixed' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
   test_percent_uvp5: 100  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
   test_percent_uvp6: 100
+  create_folder: True  # if True it will create sub-folders with class naming
 
 
 training:

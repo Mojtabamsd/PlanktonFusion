@@ -37,14 +37,20 @@ def sampling(config_path):
         df2 = None
     elif config.sampling.uvp_type == 'UVP6':
         # load uvp6
-        df2 = load_uvp6_from_csv(config.sampling.path_uvp6)
+        if config.sampling.path_uvp6_csv:
+            df2 = load_uvp6_from_csv(config.sampling.path_uvp6_csv)
+        else:
+            df2 = load_uvp6(config.sampling.path_uvp6)
         df2['label'] = df2['label'].str.replace('<', '_')
         df1 = None
     elif config.sampling.uvp_type == 'BOTH':
         df1 = load_uvp5(config.sampling.path_uvp5)
         df1['label'] = df1['label'].str.replace('<', '_')
 
-        df2 = load_uvp6_from_csv(config.sampling.path_uvp6)
+        if config.sampling.path_uvp6_csv:
+            df2 = load_uvp6_from_csv(config.sampling.path_uvp6_csv)
+        else:
+            df2 = load_uvp6(config.sampling.path_uvp6)
         df2['label'] = df2['label'].str.replace('<', '_')
     else:
         console.error("Please select correct parameter for which_uvp")
@@ -64,6 +70,9 @@ def sampling(config_path):
 
     if df1 is not None:
         df1['label'] = df1['label'].map(merge_dict).fillna(df1['label'])
+        if config.sampling.create_folder:
+            df1['relative_path'] = df1.apply(lambda row: f"output/{row['label']}/"
+                                             f"{row['relative_path'].split('/')[1]}", axis=1)
 
         if config.sampling.test_dataset_sampling == 'fixed':
             df1_sample_test, df1_train = sampling_fixed_number_test(df1, config.sampling.test_percent_uvp5)
@@ -91,6 +100,9 @@ def sampling(config_path):
 
     if df2 is not None:
         df2['label'] = df2['label'].map(merge_dict).fillna(df2['label'])
+        if config.sampling.create_folder:
+            df2['relative_path'] = df2.apply(lambda row: f"output/{row['label']}/"
+                                             f"{row['relative_path'].split('/')[1]}", axis=1)
 
         if config.sampling.test_dataset_sampling == 'fixed':
             df2_sample_test, df2_train = sampling_fixed_number_test(df2, config.sampling.test_percent_uvp6)
@@ -155,7 +167,7 @@ def sampling(config_path):
     df_train = df_train.replace('NaN', 0)
 
     selected_columns = df_train[['index', 'profile_id', 'object_id', 'depth', 'lat', 'lon', 'datetime', 'uvp_model',
-                           'label', 'relative_path']]
+                                'label', 'relative_path']]
 
     csv_path = sampling_path_train / ("sampled_images.csv")
     selected_columns.to_csv(csv_path)
