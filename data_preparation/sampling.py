@@ -151,10 +151,10 @@ def sampling(config_path):
 
     if df2_sample is not None:
         copy_image_from_df(df2_sample, sampling_path_images_train, config.sampling.target_size,
-                           cutting_ruler=False, invert_img=False)
+                           cutting_ruler=False, invert_img=True)
 
         copy_image_from_df(df2_sample_test, sampling_path_images_test, config.sampling.target_size,
-                           cutting_ruler=False, invert_img=False)
+                           cutting_ruler=False, invert_img=True)
 
     # merge two dataframe for train
     df_train = pd.concat([df1_sample, df2_sample])
