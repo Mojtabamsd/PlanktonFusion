@@ -127,6 +127,9 @@ class ConvAutoencoder(nn.Module):
         x = self.decoder_un_pool2(x, idx_mp_2)
         x = self.decoder2(x)
         x = self.decoder_un_pool1(x, idx_mp_1, output_size=(56, 56))
+        # x = self.decoder_un_pool1(x, idx_mp_1)
+        x = F.pad(x, (0, 1, 0, 1))
+
         x = self.decoder1(x)
 
         # x = F.pad(x, (0, self.input_size[1] - x.size(3), 0, self.input_size[0] - x.size(2)))
