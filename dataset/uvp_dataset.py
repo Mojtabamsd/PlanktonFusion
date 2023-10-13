@@ -41,7 +41,9 @@ class UvpDataset(Dataset):
     def __getitem__(self, idx):
         if self.csv_file and self.phase == 'val':
             relative_path = self.data_frame_val.iloc[idx, self.data_frame_val.columns.get_loc('relative_path')]
-            img_name = os.path.basename(relative_path)
+            # img_name = os.path.basename(relative_path)
+
+            img_name = relative_path.replace('output/', '')
             img_path = os.path.join(self.root_dir, img_name)
             label = self.data_frame_val.iloc[idx, self.data_frame_val.columns.get_loc('label')]
             int_label = self.label_to_int[label]
@@ -49,7 +51,10 @@ class UvpDataset(Dataset):
             return image, int_label, img_name
         elif self.csv_file:
             relative_path = self.data_frame.iloc[idx, self.data_frame.columns.get_loc('relative_path')]
-            img_name = os.path.basename(relative_path)
+            # img_name = os.path.basename(relative_path)
+
+            img_name = relative_path.replace('output/', '')
+
             img_path = os.path.join(self.root_dir, img_name)
             label = self.data_frame.iloc[idx, self.data_frame.columns.get_loc('label')]
             int_label = self.label_to_int[label]
