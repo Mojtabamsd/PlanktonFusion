@@ -40,8 +40,14 @@ autoencoder:
   batch_size: 256
   gray: True
   learning_rate: 0.001
-  num_epoch: 60
+  num_epoch: 2
   save_model_every_n_epoch: 20
+
+
+feature_uvpec:
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231013151539'  # if it's not NN write None
+  feature_type: 'conv_autoencoder'
+  batch_size: 32
 
 
 classifier:

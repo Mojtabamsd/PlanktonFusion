@@ -7,6 +7,7 @@ from train.train import train_cnn
 from inference.prediction import prediction
 from feature_extraction.train_autoencoder import train_autoencoder
 from feature_extraction.classifier import classifier
+from feature_extraction.feature_uvpec import feature_uvpec
 
 
 def add_arguments(obj):
@@ -66,6 +67,13 @@ def main(args=None):
     add_arguments(parser_autoencoder)
     parser_autoencoder.set_defaults(func=call_autoencoder)
 
+    # feature_uvpec
+    parser_feature_uvpec = subparsers.add_parser(
+        "feature_uvpec", help="Prepare features for uvpec "
+    )
+    add_arguments(parser_feature_uvpec)
+    parser_feature_uvpec.set_defaults(func=call_feature_uvpec)
+
     # classifier
     parser_classifier = subparsers.add_parser(
         "classifier", help="Train a classifier from features"
@@ -95,6 +103,10 @@ def call_prediction(args):
 
 def call_autoencoder(args):
     train_autoencoder(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_feature_uvpec(args):
+    feature_uvpec(args.configuration_file, args.input_folder, args.output_folder)
 
 
 def call_classifier(args):
