@@ -11,11 +11,7 @@ import torch
 import pandas as pd
 from tools.utils import report_to_df, memory_usage
 import os
-import shutil
 import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
 
 
 def feature_uvpec(config_path, input_path, output_path):
@@ -124,7 +120,8 @@ def latent_extraction(model, dataloader, prediction_path, sub_folder, device):
         # split taxon names and their IDs from EcoTaxa
 
         _, folder_list, _ = next(os.walk(sub_folder))
-        folder_list_split = [folder.split('_') for folder in folder_list]
+        folder_list_with_underscore = [label + '_' for label in folder_list]
+        folder_list_split = [folder.split('_') for folder in folder_list_with_underscore]
         dico_id = {folder_list_split[i][0]: folder_list_split[i][1] for i in range(len(folder_list_split))}
         dic_path = os.path.join(prediction_path, 'dico_id.npy')
         np.save(dic_path, dico_id)
