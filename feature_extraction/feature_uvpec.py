@@ -90,7 +90,7 @@ def feature_uvpec(config_path, input_path, output_path):
 
     dataloader = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
 
-    sub_folder = input_path + r'\output'
+    sub_folder = input_folder / "output"
     latent_extraction(model, dataloader, feature_path, sub_folder, device)
 
 
