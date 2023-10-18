@@ -44,17 +44,11 @@ autoencoder:
   save_model_every_n_epoch: 20
 
 
-feature_uvpec:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231013151539'  # if it's not NN write None
-  feature_type: 'conv_autoencoder'
-  batch_size: 32
-
-
 classifier:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20230926105447'  # if it's not NN write None
-  feature_type: 'conv_autoencoder'
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231017114641'  # if it's not NN write None
+  feature_type: 'uvpec'  # choose 'conv_autoencoder' or 'uvpec'
   batch_size: 32
-  classifier_type: 'svm'
+  classifier_type: 'xgboost' # choose 'svm' or 'xgboost'
 
 
 #synthetic:

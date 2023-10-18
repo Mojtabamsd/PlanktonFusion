@@ -55,13 +55,6 @@ class AutoencoderConfig:
         self.save_model_every_n_epoch = save_model_every_n_epoch
 
 
-class FeatureUvpecConfig:
-    def __init__(self, path_model, batch_size, feature_type):
-        self.path_model = path_model
-        self.batch_size = batch_size
-        self.feature_type = feature_type
-
-
 class ClassifierConfig:
     def __init__(self, path_model, batch_size, feature_type, classifier_type):
         self.path_model = path_model
@@ -82,7 +75,6 @@ class Configuration:
         self.training = TrainingConfig(**config_data['training'])
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
-        self.feature_uvpec = FeatureUvpecConfig(**config_data['feature_uvpec'])
         self.classifier = ClassifierConfig(**config_data['classifier'])
 
     def write(self, filename):

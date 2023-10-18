@@ -14,6 +14,8 @@ dependencies:
   - pip:
     - pyyaml
     - pyarrow
+    - scikit-image
+    - xgboost
     - tqdm
     - Pillow
     - pandas
