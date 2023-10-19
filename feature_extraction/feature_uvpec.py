@@ -1,15 +1,21 @@
+# copying feature extraction function from UVP6 classifier
+# please refer to https://github.com/ecotaxa/uvpec
+
 from skimage import io, measure
 from numpy import argmax, histogram
 from math import sqrt, atan2
 from collections import OrderedDict
 
 
-def feature_uvpec(img, imagefilename):
+def feature_uvpec(img, img_filename, threshold=20):
     """
     -        -
     Parameters
     ----------
-    imagefilename : str
+    img : ndarray
+        image array
+
+    img_filename : str
         Name of the image file containing the object for features extraction.
 
     threshold : uint8 (0 <-> 255)
@@ -24,12 +30,12 @@ def feature_uvpec(img, imagefilename):
         An empty OrderedDict is returned if no regions found.
     """
 
-    threshold = 20
+
     # apply thresholding
     thresh_img = img > threshold
-    if thresh_img.sum() < 1 : # there are no pixels above the threshold, return empty dict
+    if thresh_img.sum() < 1:  # there are no pixels above the threshold, return empty dict
         print("get_uvp6_features function : No objects found in",
-              imagefilename, "with threshold", threshold)
+              img_filename, "with threshold", threshold)
         return OrderedDict()
 
     # segmentation into connected regions
