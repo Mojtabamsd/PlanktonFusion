@@ -16,6 +16,16 @@ import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
+import xgboost as xgb
+from feature_extraction.feature_uvpec import feature_uvpec
+
+
+class ToTensorNoNormalize(object):
+    def __call__(self, pic):
+        img = torch.ByteTensor(torch.ByteStorage.from_buffer(pic.tobytes()))
+        img = img.view(pic.size[1], pic.size[0], len(pic.getbands()))
+        img = img.permute(2, 0, 1).contiguous()
+        return img
 
 
 def classifier(config_path, input_path, output_path):
@@ -64,26 +74,42 @@ def classifier(config_path, input_path, output_path):
                                 input_size=config.sampling.target_size,
                                 gray=config.autoencoder.gray)
 
+        transform = transforms.Compose([
+            transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
+            # Resize to desired input size
+            transforms.ToTensor(),
+        ])
+
+        # Calculate the number of parameters in millions
+        num_params = count_parameters(model) / 1_000_000
+        console.info(f"The model has approximately {num_params:.2f} million parameters.")
+
+        model.to(device)
+
+        # test memory usage
+        console.info(memory_usage(config, model, device))
+
+        # Save the model's state dictionary to a file
+        saved_weights = "model_weights_final.pth"
+        training_path = Path(config.classifier.path_model)
+        saved_weights_file = training_path / saved_weights
+
+        console.info("Deep learning latent features will be extracted")
+        console.info("Model loaded from ", saved_weights_file)
+        model.load_state_dict(torch.load(saved_weights_file, map_location=device))
+        model.to(device)
+
+    elif config.classifier.feature_type == 'uvpec':
+        model = 'uvpec'
+        console.info("Simple uvpec features will be extracted ")
+        transform = transforms.Compose([
+            transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
+            # Resize to desired input size
+            ToTensorNoNormalize(),
+        ])
+
     else:
         console.quit("Please select correct parameter for feature_type")
-
-    # Calculate the number of parameters in millions
-    num_params = count_parameters(model) / 1_000_000
-    console.info(f"The model has approximately {num_params:.2f} million parameters.")
-
-    model.to(device)
-
-    # test memory usage
-    console.info(memory_usage(config, model, device))
-
-    # Save the model's state dictionary to a file
-    saved_weights = "model_weights_final.pth"
-    training_path = Path(config.classifier.path_model)
-    saved_weights_file = training_path / saved_weights
-
-    console.info("Model loaded from ", saved_weights_file)
-    model.load_state_dict(torch.load(saved_weights_file, map_location=device))
-    model.to(device)
 
     test_dataset = UvpDataset(root_dir=input_folder,
                               num_class=config.sampling.num_class,
@@ -94,59 +120,97 @@ def classifier(config_path, input_path, output_path):
 
     dataloader = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
 
-    train_test_classifier(model, dataloader, classification_path, config, device, console)
+    sub_folder = input_folder / "output"
+    train_test_classifier(model, dataloader, classification_path, config, device, console, sub_folder)
 
 
-def train_test_classifier(model, dataloader, prediction_path, config, device, console):
-    model.eval()
+def train_test_classifier(model, dataloader, prediction_path, config, device, console, sub_folder):
+
 
     all_labels = []
     latent_vectors = []
 
-    with torch.no_grad():
+    if model == 'uvpec':
         for index, (images, labels, img_names) in enumerate(dataloader):
-            images = images.to(device)
-            outputs, latent = model(images)
-
-            latent_vectors.extend(latent.cpu().numpy())
+            images_np = images.numpy()
+            for img, img_name in zip(images_np, img_names):
+                feature = feature_uvpec(np.squeeze(img), img_names)
+                feature_values = np.array([feature_value for feature_value in feature.values()])
+                latent_vectors.append(feature_values)
             all_labels.append(labels.data.cpu().detach().numpy())
 
         all_labels = np.concatenate(all_labels).ravel()
+    else:
+        model.eval()
+        with torch.no_grad():
+            for index, (images, labels, img_names) in enumerate(dataloader):
+                images = images.to(device)
+                _, latent = model(images)
 
-        # Split data into training and testing sets
-        x_train, x_test, y_train, y_test = train_test_split(latent_vectors,
-                                                            all_labels, test_size=0.2, random_state=42)
+                latent_vectors.extend(latent.cpu().numpy())
+                all_labels.append(labels.data.cpu().detach().numpy())
 
-        if config.classifier.classifier_type == 'svm':
-            # Train SVM classifier
-            svm_classifier = SVC(kernel='rbf')
-            svm_classifier.fit(x_train, y_train)
+            all_labels = np.concatenate(all_labels).ravel()
 
-            # Evaluate the SVM classifier
-            y_pred = svm_classifier.predict(x_test)
 
-        else:
-            console.quit("Please select correct parameter for classifier_type")
+    # Split data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(latent_vectors,
+                                                        all_labels, test_size=0.2, random_state=42)
 
-        report = classification_report(
-            y_true=y_test,
-            y_pred=y_pred,
-            target_names=dataloader.dataset.label_to_int,
-            digits=6,
-        )
+    if config.classifier.classifier_type == 'svm':
+        # Train SVM classifier
+        svm_classifier = SVC(kernel='rbf')
+        svm_classifier.fit(x_train, y_train)
 
-        conf_mtx = confusion_matrix(
-            y_true=y_test,
-            y_pred=y_pred,
-        )
+        # Evaluate the SVM classifier
+        y_pred = svm_classifier.predict(x_test)
 
-        df = report_to_df(report)
-        report_filename = os.path.join(prediction_path, 'report.csv')
-        df.to_csv(report_filename)
+    elif config.classifier.classifier_type == 'xgboost':
+        xg_classifier = xgb.XGBClassifier()
+        xg_classifier.fit(x_train, y_train)
 
-        df = pd.DataFrame(conf_mtx)
-        conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
-        df.to_csv(conf_mtx_filename)
+        # Evaluate the Xgboost classifier
+        y_pred = xg_classifier.predict(x_test)
+    else:
+        console.quit("Please select correct parameter for classifier_type")
+
+    report = classification_report(
+        y_true=y_test,
+        y_pred=y_pred,
+        target_names=dataloader.dataset.label_to_int,
+        digits=6,
+    )
+
+    conf_mtx = confusion_matrix(
+        y_true=y_test,
+        y_pred=y_pred,
+    )
+
+    df = report_to_df(report)
+    report_filename = os.path.join(prediction_path, 'report.csv')
+    df.to_csv(report_filename)
+
+    df = pd.DataFrame(conf_mtx)
+    conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
+    df.to_csv(conf_mtx_filename)
+
+    # save feature.feather and dictionary idx if you want use for uvpec classifier
+
+    df = pd.DataFrame(latent_vectors, columns=['latent{}'.format(i) for i in range(1, latent_vectors[0].size + 1)])
+    int_to_label = {v: k for k, v in dataloader.dataset.label_to_int.items()}
+    df['labels'] = [int_to_label[label] for label in all_labels]
+
+    report_filename = os.path.join(prediction_path, 'features.feather')
+    df.to_feather(report_filename)
+
+    # split taxon names and their IDs from EcoTaxa
+
+    _, folder_list, _ = next(os.walk(sub_folder))
+    folder_list_with_underscore = [label + '_' for label in folder_list]
+    folder_list_split = [folder.split('_') for folder in folder_list_with_underscore]
+    dico_id = {folder_list_split[i][0]: folder_list_split[i][1] for i in range(len(folder_list_split))}
+    dic_path = os.path.join(prediction_path, 'dico_id.npy')
+    np.save(dic_path, dico_id)
 
 
 

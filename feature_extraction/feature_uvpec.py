@@ -1,130 +1,162 @@
-import datetime
-from configs.config import Configuration
-from tools.console import Console
-from pathlib import Path
-from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
-from dataset.uvp_dataset import UvpDataset
-from models.classifier_cnn import count_parameters
-from models.autoencoder import ConvAutoencoder
-import torch
-import pandas as pd
-from tools.utils import report_to_df, memory_usage
-import os
-import numpy as np
+from skimage import io, measure
+from numpy import argmax, histogram
+from math import sqrt, atan2
+from collections import OrderedDict
 
 
-def feature_uvpec(config_path, input_path, output_path):
+def feature_uvpec(img, imagefilename):
+    """
+    -        -
+    Parameters
+    ----------
+    imagefilename : str
+        Name of the image file containing the object for features extraction.
 
-    config = Configuration(config_path, input_path, output_path)
+    threshold : uint8 (0 <-> 255)
+        Threshold value used to split image pixels into foreground (> threshold)
+        and background (<= threshold) pixels.
 
-    # Create output directory
-    input_folder = Path(input_path)
-    output_folder = Path(output_path)
+    Returns
+    -------
+    features : OrderedDict
+        Ordered Dictionary containing the features extracted from biggest
+        connected region found in image.
+        An empty OrderedDict is returned if no regions found.
+    """
 
-    console = Console(output_folder)
-    console.info("Feature Extraction started ...")
+    threshold = 20
+    # apply thresholding
+    thresh_img = img > threshold
+    if thresh_img.sum() < 1 : # there are no pixels above the threshold, return empty dict
+        print("get_uvp6_features function : No objects found in",
+              imagefilename, "with threshold", threshold)
+        return OrderedDict()
 
-    sampled_images_csv_filename = "sampled_images.csv"
-    input_csv = input_folder / sampled_images_csv_filename
+    # segmentation into connected regions
+    label_img = measure.label(thresh_img)
 
-    if not input_csv.is_file():
-        console.info("Label not provided")
-        input_csv = None
+    # get region properties for connected regions found
+    props = measure.regionprops(label_img, img)
 
-    time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    rel_feature_path = Path("feature" + time_str)
-    feature_path = output_folder / rel_feature_path
-    if not feature_path.exists():
-        feature_path.mkdir(exist_ok=True, parents=True)
-    elif feature_path.exists():
-        console.error("The output folder", feature_path, "exists.")
-        console.quit("Folder exists, not overwriting previous results.")
+    # get index of the region presenting the biggest area in square pixels
+    Areas = list()
+    for region in props:
+        Areas.append(region.area)
+    max_area_idx = argmax(Areas)
+    region = props[max_area_idx]
 
-    # Save configuration file
-    output_config_filename = feature_path / "config.yaml"
-    config.write(output_config_filename)
+    # get gray values histogram for this region, and clear the 0 bin (background pixels)
+    hist = histogram(region.intensity_image, bins=256, range=(0, 256))[0]
+    hist[0] = 0
 
-    # Define data transformations
-    transform = transforms.Compose([
-        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),  # Resize to desired input size
-        transforms.ToTensor(),
-    ])
+    # calculate histogram related features
+    # (or just recover those directly available from regionprops)
+    mean = region.mean_intensity
+    vmin = region.min_intensity
+    vmax = region.max_intensity
+    intden = region.weighted_moments_central[0][0]  # this is the sum of all pixel values
+    mode = argmax(hist)
+    vrange = vmax - vmin
+    meanpos = (mean - vmin) / vrange
 
-    device = torch.device(f'cuda:{config.base.gpu_index}' if
-                          torch.cuda.is_available() and config.base.cpu is False else 'cpu')
-    console.info(f"Running on:  {device}")
+    # get quartiles, and accumulate squared pixels values for stddev calculation
+    nb_pixels = region.area
+    first_quartile = 0.25 * nb_pixels
+    second_quartile = 0.5 * nb_pixels
+    third_quartile = 0.75 * nb_pixels
 
-    if config.feature_uvpec.feature_type == 'conv_autoencoder':
-        model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
-                                input_size=config.sampling.target_size,
-                                gray=config.autoencoder.gray)
+    square_gray_acc = 0;
+    pix_acc = 0
+    median = -1;
+    histcum1 = -1;
+    histcum3 = -1
 
-    else:
-        console.quit("Please select correct parameter for feature_type")
+    for gray_level, count in enumerate(hist):
+        if count != 0:
+            square_gray_acc += count * gray_level * gray_level
+            pix_acc += count
+            if (histcum1 == -1) and (pix_acc > first_quartile): histcum1 = gray_level
+            if (median == -1) and (pix_acc > second_quartile): median = gray_level
+            if (histcum3 == -1) and (pix_acc > third_quartile): histcum3 = gray_level
 
-    # Calculate the number of parameters in millions
-    num_params = count_parameters(model) / 1_000_000
-    console.info(f"The model has approximately {num_params:.2f} million parameters.")
+    stddev = sqrt((square_gray_acc / nb_pixels) - (mean * mean))
+    cv = 100 * (stddev / mean)
+    sr = 100 * (stddev / vrange)
 
-    model.to(device)
+    angle = 0.5 * atan2(2 * region.moments_central[1][1],
+                        (region.moments_central[0][2] - region.moments_central[2][0]))
 
-    # test memory usage
-    console.info(memory_usage(config, model, device))
+    # build an output ordered dict with the features vector
+    # ATTENTION : feature insertion order is VERY important,
+    # as it has to match exactly the feature order used on UVP6
+    features = OrderedDict()
+    features["area"] = nb_pixels
+    features["width"] = region.bbox[3] - region.bbox[1]
+    features["height"] = region.bbox[2] - region.bbox[0]
+    features["mean"] = mean
+    features["stddev"] = stddev
+    features["mode"] = mode
+    features["min"] = vmin
+    features["max"] = vmax
+    features["x"] = region.local_centroid[1]
+    features["y"] = region.local_centroid[0]
+    features["xm"] = region.weighted_local_centroid[1]
+    features["ym"] = region.weighted_local_centroid[0]
+    features["major"] = region.major_axis_length
+    features["minor"] = region.minor_axis_length
+    features["angle"] = angle
+    features["eccentricity"] = region.eccentricity
+    features["intden"] = intden
+    features["median"] = median
+    features["histcum1"] = histcum1
+    features["histcum3"] = histcum3
+    features["esd"] = region.equivalent_diameter
+    features["range"] = vrange
+    features["meanpos"] = meanpos
+    features["cv"] = cv
+    features["sr"] = sr
+    features["bbox_area"] = region.bbox_area
+    features["extent"] = region.extent
 
-    # Save the model's state dictionary to a file
-    saved_weights = "model_weights_final.pth"
-    training_path = Path(config.feature_uvpec.path_model)
-    saved_weights_file = training_path / saved_weights
+    features["central_moment-2-0"] = region.moments_central[0][2]
+    features["central_moment-1-1"] = region.moments_central[1][1]
+    features["central_moment-0-2"] = region.moments_central[2][0]
+    features["central_moment-3-0"] = region.moments_central[0][3]
+    features["central_moment-2-1"] = region.moments_central[1][2]
+    features["central_moment-1-2"] = region.moments_central[2][1]
+    features["central_moment-0-3"] = region.moments_central[3][0]
 
-    console.info("Model loaded from ", saved_weights_file)
-    model.load_state_dict(torch.load(saved_weights_file, map_location=device))
-    model.to(device)
+    """
+    Current SciKit Hu Moments implementation is apparently wrong !
+    (bad coordinate system convention rc <-> xy)
+    It only has an impact on the sign of seventh Hu moment (mirroring)
+    This is why we're inverting the sign here for hu_moment-7
+    """
+    features["hu_moment-1"] = region.moments_hu[0]
+    features["hu_moment-2"] = region.moments_hu[1]
+    features["hu_moment-3"] = region.moments_hu[2]
+    features["hu_moment-4"] = region.moments_hu[3]
+    features["hu_moment-5"] = region.moments_hu[4]
+    features["hu_moment-6"] = region.moments_hu[5]
+    features["hu_moment-7"] = - region.moments_hu[6]  # see comment above
 
-    test_dataset = UvpDataset(root_dir=input_folder,
-                              num_class=config.sampling.num_class,
-                              # csv_file=None,
-                              csv_file=input_csv,
-                              transform=transform,
-                              phase='test')
+    features["gray_central_moment-2-0"] = region.weighted_moments_central[0][2]
+    features["gray_central_moment-1-1"] = region.weighted_moments_central[1][1]
+    features["gray_central_moment-0-2"] = region.weighted_moments_central[2][0]
+    features["gray_central_moment-3-0"] = region.weighted_moments_central[0][3]
+    features["gray_central_moment-2-1"] = region.weighted_moments_central[1][2]
+    features["gray_central_moment-1-2"] = region.weighted_moments_central[2][1]
+    features["gray_central_moment-0-3"] = region.weighted_moments_central[3][0]
 
-    dataloader = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
+    features["gray_hu_moment-1"] = region.weighted_moments_hu[0]
+    features["gray_hu_moment-2"] = region.weighted_moments_hu[1]
+    features["gray_hu_moment-3"] = region.weighted_moments_hu[2]
+    features["gray_hu_moment-4"] = region.weighted_moments_hu[3]
+    features["gray_hu_moment-5"] = region.weighted_moments_hu[4]
+    features["gray_hu_moment-6"] = region.weighted_moments_hu[5]
+    features["gray_hu_moment-7"] = - region.weighted_moments_hu[6]  # see comment above
 
-    sub_folder = input_folder / "output"
-    latent_extraction(model, dataloader, feature_path, sub_folder, device)
-
-
-def latent_extraction(model, dataloader, prediction_path, sub_folder, device):
-    model.eval()
-
-    all_labels = []
-    latent_vectors = []
-
-    with torch.no_grad():
-        for index, (images, labels, img_names) in enumerate(dataloader):
-            images = images.to(device)
-            outputs, latent = model(images)
-
-            latent_vectors.extend(latent.cpu().numpy())
-            all_labels.append(labels.data.cpu().detach().numpy())
-
-        all_labels = np.concatenate(all_labels).ravel()
-
-        df = pd.DataFrame(latent_vectors, columns=['latent{}'.format(i) for i in range(1, latent_vectors[0].size+1)])
-        int_to_label = {v: k for k, v in dataloader.dataset.label_to_int.items()}
-        df['labels'] = [int_to_label[label] for label in all_labels]
-
-        report_filename = os.path.join(prediction_path, 'features.feather')
-        df.to_feather(report_filename)
-
-        # split taxon names and their IDs from EcoTaxa
-
-        _, folder_list, _ = next(os.walk(sub_folder))
-        folder_list_with_underscore = [label + '_' for label in folder_list]
-        folder_list_split = [folder.split('_') for folder in folder_list_with_underscore]
-        dico_id = {folder_list_split[i][0]: folder_list_split[i][1] for i in range(len(folder_list_split))}
-        dic_path = os.path.join(prediction_path, 'dico_id.npy')
-        np.save(dic_path, dico_id)
+    return features
 
 
 
