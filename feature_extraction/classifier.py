@@ -22,7 +22,7 @@ from feature_extraction.feature_uvpec import feature_uvpec
 
 class ToTensorNoNormalize(object):
     def __call__(self, pic):
-        img = torch.ByteTensor(torch.ByteStorage.from_buffer(pic.tobytes()))
+        img = torch.tensor(list(pic.tobytes()), dtype=torch.uint8)
         img = img.view(pic.size[1], pic.size[0], len(pic.getbands()))
         img = img.permute(2, 0, 1).contiguous()
         return img
