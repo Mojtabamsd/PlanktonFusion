@@ -18,6 +18,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 from feature_extraction.feature_uvpec import feature_uvpec
+from tools.utils import plot_results
 
 
 class ToTensorNoNormalize(object):
@@ -126,7 +127,6 @@ def classifier(config_path, input_path, output_path):
 
 def train_test_classifier(model, dataloader, prediction_path, config, device, console, sub_folder):
 
-
     all_labels = []
     latent_vectors = []
 
@@ -152,7 +152,6 @@ def train_test_classifier(model, dataloader, prediction_path, config, device, co
 
             all_labels = np.concatenate(all_labels).ravel()
 
-
     # Split data into training and testing sets
     x_train, x_test, y_train, y_test = train_test_split(latent_vectors,
                                                         all_labels, test_size=0.2, random_state=42)
@@ -174,7 +173,7 @@ def train_test_classifier(model, dataloader, prediction_path, config, device, co
     else:
         console.quit("Please select correct parameter for classifier_type")
 
-    report = classification_report(
+    cl_report = classification_report(
         y_true=y_test,
         y_pred=y_pred,
         target_names=dataloader.dataset.label_to_int,
@@ -186,13 +185,15 @@ def train_test_classifier(model, dataloader, prediction_path, config, device, co
         y_pred=y_pred,
     )
 
-    df = report_to_df(report)
+    cl_report_df = report_to_df(cl_report)
     report_filename = os.path.join(prediction_path, 'report.csv')
-    df.to_csv(report_filename)
+    cl_report_df.to_csv(report_filename)
 
-    df = pd.DataFrame(conf_mtx)
+    cm_df = pd.DataFrame(conf_mtx)
     conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
-    df.to_csv(conf_mtx_filename)
+    cm_df.to_csv(conf_mtx_filename)
+
+    plot_results(cl_report_df, conf_mtx, prediction_path, target_names=dataloader.dataset.label_to_int)
 
     # save feature.feather and dictionary idx if you want use for uvpec classifier
 

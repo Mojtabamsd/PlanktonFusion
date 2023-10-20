@@ -16,6 +16,7 @@ dependencies:
     - pyarrow
     - scikit-image
     - xgboost
+    - seaborn
     - tqdm
     - Pillow
     - pandas

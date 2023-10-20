@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import psutil
+import seaborn as sns
+import os
 
 
 def report_to_df(report):
@@ -41,6 +43,52 @@ def plot_loss(loss_values, num_epoch, training_path):
 
     # Close the plot to release resources
     plt.close()
+
+
+def plot_results(report_df, cm, out_path, target_names):
+
+    # Normalize the confusion matrix
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    # Create a heatmap for the confusion matrix
+    plt.figure(figsize=(16, 10))
+    sns.heatmap(cm, annot=True, fmt=".2f", cmap='Blues', xticklabels=target_names, yticklabels=target_names)
+
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    # plt.show()
+
+    cm_path = os.path.join(out_path, 'confusion_matrix.png')
+    plt.savefig(cm_path, dpi=600)
+
+    # Extract class names and F1-scores
+    class_names = report_df['Class Name'][:report_df.shape[0]-3]
+    f1_scores = report_df['f1-score'][:report_df.shape[0]-3].astype(float)
+
+    # Extract macro and weighted averages
+    macro_avg = report_df.iloc[-2][2:].astype(float)
+    weighted_avg = report_df.iloc[-1][2:].astype(float)  #
+
+    # Create a bar chart
+    plt.figure(figsize=(16, 10))
+
+    # Plot class F1-scores
+    plt.bar(class_names, f1_scores, color='skyblue', label='F1-Score')
+
+    # Add a bar for Macro Average and Weighted Average
+    plt.bar('Macro Avg', macro_avg['f1-score'], color='orange', label='Macro Avg')
+    plt.bar('Weighted Avg', weighted_avg['f1-score'], color='green', label='Weighted Avg')
+
+    plt.xlabel('Class Name')
+    plt.ylabel('Scores')
+    plt.title('Scores by Class')
+    plt.xticks(rotation=45)
+    plt.legend()
+    # plt.show()
+
+    cr_path = os.path.join(out_path, 'classification_report.png')
+    plt.savefig(cr_path, dpi=600)
 
 
 def memory_usage(config, model, device):
