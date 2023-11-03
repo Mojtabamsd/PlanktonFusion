@@ -37,15 +37,23 @@ def classifier(config_path, input_path, output_path):
     input_folder = Path(input_path)
     output_folder = Path(output_path)
 
+    input_folder_train = input_folder / "train"
+    input_folder_test = input_folder / "test"
+
     console = Console(output_folder)
     console.info("Classification started ...")
 
     sampled_images_csv_filename = "sampled_images.csv"
-    input_csv = input_folder / sampled_images_csv_filename
+    input_csv_train = input_folder_train / sampled_images_csv_filename
+    input_csv_test = input_folder_test / sampled_images_csv_filename
 
-    if not input_csv.is_file():
-        console.info("Label not provided")
-        input_csv = None
+    if not input_csv_train.is_file():
+        console.info("Label not provided for training")
+        input_csv_train = None
+
+    if not input_csv_test.is_file():
+        console.info("Label not provided for testing")
+        input_csv_test = None
 
     time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
     rel_classification_path = Path("classification" + time_str)
@@ -112,17 +120,28 @@ def classifier(config_path, input_path, output_path):
     else:
         console.quit("Please select correct parameter for feature_type")
 
-    test_dataset = UvpDataset(root_dir=input_folder,
+    train_dataset = UvpDataset(root_dir=input_folder_train,
                               num_class=config.sampling.num_class,
                               # csv_file=None,
-                              csv_file=input_csv,
+                              csv_file=input_csv_train,
                               transform=transform,
                               phase='test')
 
-    dataloader = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
+    dataloader_train = DataLoader(train_dataset, batch_size=config.classifier.batch_size, shuffle=False)
 
-    sub_folder = input_folder / "output"
-    train_test_classifier(model, dataloader, classification_path, config, device, console, sub_folder)
+    test_dataset = UvpDataset(root_dir=input_folder_test,
+                              num_class=config.sampling.num_class,
+                              # csv_file=None,
+                              csv_file=input_csv_test,
+                              transform=transform,
+                              phase='test')
+
+    dataloader_test = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
+
+    sub_folder = input_folder_train / "output"
+    # train_test_classifier(model, dataloader_train, classification_path, config, device, console, sub_folder)
+    classifier_model = train_classifier(model, dataloader_train, config, device, console)
+    test_classifier(model, classifier_model, dataloader_test, classification_path, config, device, console, sub_folder)
 
 
 def train_test_classifier(model, dataloader, prediction_path, config, device, console, sub_folder):
@@ -158,7 +177,7 @@ def train_test_classifier(model, dataloader, prediction_path, config, device, co
 
     if config.classifier.classifier_type == 'svm':
         # Train SVM classifier
-        svm_classifier = SVC(kernel='rbf')
+        svm_classifier = SVC(kernel='rbf', class_weight='balanced')
         svm_classifier.fit(x_train, y_train)
 
         # Evaluate the SVM classifier
@@ -170,6 +189,154 @@ def train_test_classifier(model, dataloader, prediction_path, config, device, co
 
         # Evaluate the Xgboost classifier
         y_pred = xg_classifier.predict(x_test)
+    else:
+        console.quit("Please select correct parameter for classifier_type")
+
+    cl_report = classification_report(
+        y_true=y_test,
+        y_pred=y_pred,
+        target_names=dataloader.dataset.label_to_int,
+        digits=6,
+    )
+
+    conf_mtx = confusion_matrix(
+        y_true=y_test,
+        y_pred=y_pred,
+    )
+
+    cl_report_df = report_to_df(cl_report)
+    report_filename = os.path.join(prediction_path, 'report.csv')
+    cl_report_df.to_csv(report_filename)
+
+    cm_df = pd.DataFrame(conf_mtx)
+    conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
+    cm_df.to_csv(conf_mtx_filename)
+
+    plot_results(cl_report_df, conf_mtx, prediction_path, target_names=dataloader.dataset.label_to_int)
+
+    # save feature.feather and dictionary idx if you want use for uvpec classifier
+
+    df = pd.DataFrame(latent_vectors, columns=['latent{}'.format(i) for i in range(1, latent_vectors[0].size + 1)])
+    int_to_label = {v: k for k, v in dataloader.dataset.label_to_int.items()}
+    df['labels'] = [int_to_label[label] for label in all_labels]
+
+    report_filename = os.path.join(prediction_path, 'features.feather')
+    df.to_feather(report_filename)
+
+    # split taxon names and their IDs from EcoTaxa
+
+    _, folder_list, _ = next(os.walk(sub_folder))
+    folder_list_with_underscore = [label + '_' for label in folder_list]
+    folder_list_split = [folder.split('_') for folder in folder_list_with_underscore]
+    dico_id = {folder_list_split[i][0]: folder_list_split[i][1] for i in range(len(folder_list_split))}
+    dic_path = os.path.join(prediction_path, 'dico_id.npy')
+    np.save(dic_path, dico_id)
+
+
+def train_classifier(model, dataloader, config, device, console):
+
+    all_labels = []
+    latent_vectors = []
+
+    if model == 'uvpec':
+        for index, (images, labels, img_names) in enumerate(dataloader):
+            images_np = images.numpy()
+            for img, img_name in zip(images_np, img_names):
+                feature = feature_uvpec(np.squeeze(img), img_names)
+                feature_values = np.array([feature_value for feature_value in feature.values()])
+                latent_vectors.append(feature_values)
+            all_labels.append(labels.data.cpu().detach().numpy())
+
+        all_labels = np.concatenate(all_labels).ravel()
+    else:
+        model.eval()
+        with torch.no_grad():
+            for index, (images, labels, img_names) in enumerate(dataloader):
+                images = images.to(device)
+                _, latent = model(images)
+
+                latent_vectors.extend(latent.cpu().numpy())
+                all_labels.append(labels.data.cpu().detach().numpy())
+
+            all_labels = np.concatenate(all_labels).ravel()
+
+    # Split data into training and testing sets
+    x_train, y_train = latent_vectors, all_labels
+
+    if config.classifier.classifier_type == 'svm':
+        # Train SVM classifier
+        svm_classifier = SVC(kernel='rbf', class_weight='balanced')
+        svm_classifier.fit(x_train, y_train)
+
+        return svm_classifier
+
+    elif config.classifier.classifier_type == 'xgboost':
+        xg_classifier = xgb.XGBClassifier()
+        xg_classifier.fit(x_train, y_train)
+
+        # num_class = 13
+        # random_state = 42
+        # n_jobs = 12
+        # learning_rate = 0.2
+        # max_depth = 5
+        # num_trees_CV = 500
+        # dtrain = xgb.DMatrix(pd.DataFrame(x_train), label=y_train)
+        #
+        # xgb_params = {'nthread': n_jobs, 'eta': learning_rate, 'max_depth': max_depth, 'subsample': 0.75,
+        #               'tree_method': 'hist', 'objective': 'multi:softprob',
+        #               'eval_metric': ['mlogloss', 'merror'], 'num_class': num_class,
+        #               'seed': random_state}
+        #
+        # xg_classifier = xgb.train(xgb_params, dtrain, num_boost_round=num_trees_CV)
+
+        return xg_classifier
+    else:
+        console.quit("Please select correct parameter for classifier_type")
+
+
+def test_classifier(model, classifier_model, dataloader, prediction_path, config, device, console, sub_folder):
+
+    all_labels = []
+    latent_vectors = []
+
+    if model == 'uvpec':
+        for index, (images, labels, img_names) in enumerate(dataloader):
+            images_np = images.numpy()
+            for img, img_name in zip(images_np, img_names):
+                feature = feature_uvpec(np.squeeze(img), img_names)
+                feature_values = np.array([feature_value for feature_value in feature.values()])
+                latent_vectors.append(feature_values)
+            all_labels.append(labels.data.cpu().detach().numpy())
+
+        all_labels = np.concatenate(all_labels).ravel()
+    else:
+        model.eval()
+        with torch.no_grad():
+            for index, (images, labels, img_names) in enumerate(dataloader):
+                images = images.to(device)
+                _, latent = model(images)
+
+                latent_vectors.extend(latent.cpu().numpy())
+                all_labels.append(labels.data.cpu().detach().numpy())
+
+            all_labels = np.concatenate(all_labels).ravel()
+
+    # testing sets
+    x_test, y_test = latent_vectors, all_labels
+
+    if config.classifier.classifier_type == 'svm':
+
+        # Evaluate the SVM classifier
+        y_pred = classifier_model.predict(x_test)
+
+    elif config.classifier.classifier_type == 'xgboost':
+
+        # Evaluate the Xgboost classifier
+        y_pred = classifier_model.predict(x_test)
+
+        # dtest = xgb.DMatrix(pd.DataFrame(x_test))
+        # y_pred = classifier_model.predict(dtest)
+        # y_pred = np.argmax(y_pred, axis=1)
     else:
         console.quit("Please select correct parameter for classifier_type")
 
