@@ -14,9 +14,9 @@ class ConvAutoencoder(nn.Module):
         else:
             self.input_channels = 3
 
-        self.num_ch1 = 32
-        self.num_ch2 = 64
-        self.num_ch3 = 192
+        self.num_ch1 = 64       #32
+        self.num_ch2 = 192      #64
+        self.num_ch3 = 384      #192
         self.num_ch4 = 256
 
         # Encoder

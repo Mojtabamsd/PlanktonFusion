@@ -9,14 +9,14 @@ sampling:
   path_uvp6: 'D:\mojmas\files\data\UVP6Net'
   path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
   path_output: 'D:\mojmas\files\data\result_sampling'
-  num_class: 13             # choose 13 or 25 classes
+  num_class: 13             # choose 13 or 23 classes
   sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
-  sampling_percent_uvp5: 10000
-  sampling_percent_uvp6: 10000
+  sampling_percent_uvp5: 1000
+  sampling_percent_uvp6: 1000
   target_size: [227, 227]  #image target size
-  test_dataset_sampling: 'fixed' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
-  test_percent_uvp5: 100  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
-  test_percent_uvp6: 100
+  test_dataset_sampling: 'stratified' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
+  test_percent_uvp5: 0.1  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
+  test_percent_uvp6: 0.1
   create_folder: True  # if True it will create sub-folders with class naming
 
 
@@ -36,18 +36,18 @@ prediction:
 
 autoencoder:
   architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder'
-  latent_dim: 16
+  latent_dim: 64
   batch_size: 256
   gray: True
-  learning_rate: 0.001
-  num_epoch: 2
+  learning_rate: 0.00001
+  num_epoch: 100
   save_model_every_n_epoch: 20
 
 
 classifier:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231017114641'  # if it's not NN write None
-  feature_type: 'uvpec'  # choose 'conv_autoencoder' or 'uvpec'
-  batch_size: 32
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231103144312'  # if it's not NN write None
+  feature_type: 'conv_autoencoder'  # choose 'conv_autoencoder' or 'uvpec'
+  batch_size: 128
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost'
 
 
