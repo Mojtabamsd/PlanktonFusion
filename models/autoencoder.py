@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 
 
 class ConvAutoencoder(nn.Module):
@@ -134,6 +135,39 @@ class ConvAutoencoder(nn.Module):
 
         # x = F.pad(x, (0, self.input_size[1] - x.size(3), 0, self.input_size[0] - x.size(2)))
         return x, latent
+
+
+class ResNetCustom(nn.Module):
+    def __init__(self, num_classes=13, latent_dim=16, gray=False, pretrained=None):
+        super(ResNetCustom, self).__init__()
+
+        if gray:
+            input_channels = 1
+        else:
+            input_channels = 3
+
+        # Load a pre-trained ResNet18 model
+        resnet = models.resnet18(pretrained=pretrained)
+
+        self.conv1 = nn.Conv2d(input_channels, 64, kernel_size=(7, 7),
+                               stride=(2, 2), padding=(3, 3), bias=False)
+
+        # Remove the original classification head
+        self.features = nn.Sequential(self.conv1, *list(resnet.children())[1:-1])
+
+        # Add a new classification head
+        self.classification_head = nn.Linear(resnet.fc.in_features, num_classes)
+
+        # Add a latent layer
+        self.latent_layer = nn.Linear(resnet.fc.in_features, latent_dim)
+
+    def forward(self, x):
+        features = self.features(x)
+        features = torch.flatten(features, 1)
+        classification_output = self.classification_head(features)
+        latent_output = self.latent_layer(features)
+
+        return classification_output, latent_output
 
 
 
