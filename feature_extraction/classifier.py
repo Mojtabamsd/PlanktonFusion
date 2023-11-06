@@ -6,7 +6,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
-from models.autoencoder import ConvAutoencoder
+from models.autoencoder import ConvAutoencoder, ResNetCustom
 import torch
 import pandas as pd
 from tools.utils import report_to_df, memory_usage
@@ -78,10 +78,16 @@ def classifier(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    if config.classifier.feature_type == 'conv_autoencoder':
-        model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
-                                input_size=config.sampling.target_size,
-                                gray=config.autoencoder.gray)
+    if config.classifier.feature_type == 'conv_autoencoder' or config.classifier.feature_type == 'resnet18':
+
+        if config.classifier.feature_type == 'conv_autoencoder':
+            model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
+                                    input_size=config.sampling.target_size,
+                                    gray=config.autoencoder.gray)
+        elif config.classifier.feature_type == 'resnet18':
+            model = ResNetCustom(num_classes=config.sampling.num_class,
+                                 latent_dim=config.autoencoder.latent_dim,
+                                 gray=config.autoencoder.gray)
 
         transform = transforms.Compose([
             transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
