@@ -266,6 +266,9 @@ def train_classifier(model, dataloader, config, device, console):
 
             all_labels = np.concatenate(all_labels).ravel()
 
+    # # in case of using pre-generated latents
+    # latent_vectors = np.load(config.input_path + r'\train\latents.npy')
+
     # Split data into training and testing sets
     x_train, y_train = latent_vectors, all_labels
 
@@ -326,6 +329,9 @@ def test_classifier(model, classifier_model, dataloader, prediction_path, config
                 all_labels.append(labels.data.cpu().detach().numpy())
 
             all_labels = np.concatenate(all_labels).ravel()
+
+    # # in case of using pre-generated latents
+    # latent_vectors = np.load(config.input_path + r'\test\latents.npy')
 
     # testing sets
     x_test, y_test = latent_vectors, all_labels
