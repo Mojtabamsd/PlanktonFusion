@@ -77,7 +77,7 @@ def sampling_uniform(df, percent):
 
     # Sample the same number of data points from each class
     sampled_df = df.groupby('label', group_keys=False).apply(
-        lambda x: x.sample(n=min_sample_size, replace=True) if len(x) < min_sample_size else x.sample(n=min_sample_size,
+        lambda x: x.sample(n=min_sample_size, replace=False) if len(x) < min_sample_size else x.sample(n=min_sample_size,
                                                                                                       replace=False))
 
     return sampled_df
@@ -93,7 +93,7 @@ def sampling_uniform_test(df, percent):
 
     # Sample the same number of data points from each class
     sampled_df = df.groupby('label', group_keys=False).apply(
-        lambda x: x.sample(n=min_sample_size, replace=True) if len(x) < min_sample_size else x.sample(n=min_sample_size,
+        lambda x: x.sample(n=min_sample_size, replace=False) if len(x) < min_sample_size else x.sample(n=min_sample_size,
                                                                                                       replace=False))
 
     # Create a DataFrame containing the original data without the sampled rows
@@ -106,7 +106,7 @@ def sampling_fixed_number(df, fixed_number):
     # shffle data
     df = df.sample(frac=1, random_state=np.random.seed())
     sampled_df = df.groupby('label', group_keys=False).apply(
-        lambda x: x.sample(n=fixed_number, replace=True) if len(x) > fixed_number else x.sample(n=len(x), replace=False))
+        lambda x: x.sample(n=fixed_number, replace=False) if len(x) > fixed_number else x.sample(n=len(x), replace=False))
 
     return sampled_df
 
@@ -115,7 +115,7 @@ def sampling_fixed_number_test(df, fixed_number):
     # shffle data
     df = df.sample(frac=1, random_state=np.random.seed())
     sampled_df = df.groupby('label', group_keys=False).apply(
-        lambda x: x.sample(n=fixed_number, replace=True) if len(x) > fixed_number else x.sample(n=len(x), replace=False))
+        lambda x: x.sample(n=fixed_number, replace=False) if len(x) > fixed_number else x.sample(n=len(x), replace=False))
 
     # Create a DataFrame containing the original data without the sampled rows
     original_without_sampled = df.drop(sampled_df.index)
