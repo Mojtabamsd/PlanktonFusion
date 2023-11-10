@@ -59,7 +59,7 @@ def plot_results(report_df, cm, out_path, target_names):
     plt.title('Confusion Matrix')
     # plt.show()
 
-    cm_path = os.path.join(out_path, 'confusion_matrix.png')
+    cm_path = os.path.join(out_path, 'confusion_matrix.eps')
     plt.savefig(cm_path, dpi=600)
 
     # Extract class names and F1-scores
@@ -87,7 +87,7 @@ def plot_results(report_df, cm, out_path, target_names):
     plt.legend()
     # plt.show()
 
-    cr_path = os.path.join(out_path, 'classification_report.png')
+    cr_path = os.path.join(out_path, 'classification_report.eps')
     plt.savefig(cr_path, dpi=600)
 
 
