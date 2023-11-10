@@ -91,6 +91,33 @@ def plot_results(report_df, cm, out_path, target_names):
     plt.savefig(cr_path, dpi=600)
 
 
+def plot_f1_scores(out_path_name, model_names, *dataframes):
+    # Combine the reports into a single DataFrame
+    combined_report = pd.concat(dataframes, keys=model_names)
+
+    # Filter out the row with the class name "accuracy" from each DataFrame
+    combined_report = combined_report[combined_report["Class Name"] != "accuracy"]
+
+    # Set the style of seaborn
+    sns.set(style="whitegrid")
+
+    # Set up the bar plot using seaborn
+    plt.figure(figsize=(16, 10))
+    sns.barplot(x="Class Name", y="f1-score", hue="level_0", data=combined_report.reset_index())
+
+    # Customize the plot
+    plt.xlabel('Class Name')
+    plt.ylabel('f1-score')
+    plt.title('f1-scores for Each Class by Model')
+    plt.legend(title="Model", loc="upper left", bbox_to_anchor=(1, 1))
+
+    # Show the plot
+    plt.tight_layout()
+    # plt.show()
+
+    plt.savefig(out_path_name, dpi=600)
+
+
 def memory_usage(config, model, device):
 
     # Create a dummy input tensor
