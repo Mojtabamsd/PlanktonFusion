@@ -166,7 +166,7 @@ def train_cnn(config_path, input_path, output_path):
                                 batch_size=config.training.batch_size,
                                 shuffle=True)
 
-    elif input_csv_test.is_file():
+    elif input_csv_test is not None:
         console.info('Testing model with folder test')
 
         test_dataset = UvpDataset(root_dir=input_folder_test,
