@@ -299,6 +299,21 @@ def train_classifier(model, dataloader, config, device, console):
         # xg_classifier = xgb.train(xgb_params, dtrain, num_boost_round=num_trees_CV)
 
         return xg_classifier
+
+    elif config.classifier.classifier_type == 'isf':
+        from sklearn.ensemble import IsolationForest
+
+        clf = IsolationForest(random_state=42)
+        normal_indices = [i for i, label in enumerate(y_train) if label != 12]
+        x_normal = [x_train[i] for i in normal_indices]
+        y_normal = np.array([y_train[i] for i in range(len(y_train)) if i in normal_indices])
+
+        clf.fit(x_normal)
+
+        xg_classifier = xgb.XGBClassifier()
+        xg_classifier.fit(x_normal, y_normal)
+
+        return xg_classifier, clf
     else:
         console.quit("Please select correct parameter for classifier_type")
 
@@ -349,6 +364,26 @@ def test_classifier(model, classifier_model, dataloader, prediction_path, config
         # dtest = xgb.DMatrix(pd.DataFrame(x_test))
         # y_pred = classifier_model.predict(dtest)
         # y_pred = np.argmax(y_pred, axis=1)
+
+    elif config.classifier.classifier_type == 'isf':
+        xgb_classifier, clf = classifier_model
+        y_pred_iso = clf.predict(x_test)
+
+        y_pred_binary = [1 if label == 1 else -1 for label in y_pred_iso]
+        detritus_indices = [i for i, label in enumerate(y_pred_binary) if label == -1]
+
+        # Separate potential normal samples
+        x_normal = [x_test[i] for i in range(len(y_test)) if i not in detritus_indices]
+
+        y_normal_pred = xgb_classifier.predict(x_normal)
+
+        y_pred = (np.ones(y_test.size) * 12).astype(int)
+        c = 0
+        for i in range(len(y_test)):
+            if i not in detritus_indices:
+                y_pred[i] = y_normal_pred[c]
+                c += 1
+
     else:
         console.quit("Please select correct parameter for classifier_type")
 

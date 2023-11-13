@@ -74,6 +74,9 @@ def sampling(config_path):
             df1['relative_path'] = df1.apply(lambda row: f"output/{row['label']}/"
                                              f"{row['relative_path'].split('/')[1]}", axis=1)
 
+        # # to exclude of taxon
+        # df1 = df1[df1['label'] != 'detritus']
+
         if config.sampling.test_dataset_sampling == 'fixed':
             df1_sample_test, df1_train = sampling_fixed_number_test(df1, config.sampling.test_percent_uvp5)
         elif config.sampling.test_dataset_sampling == 'uniform':
@@ -103,6 +106,9 @@ def sampling(config_path):
         if config.sampling.create_folder:
             df2['relative_path'] = df2.apply(lambda row: f"output/{row['label']}/"
                                              f"{row['relative_path'].split('/')[1]}", axis=1)
+
+        # # to exclude of taxon
+        # df2 = df2[df2['label'] != 'detritus']
 
         if config.sampling.test_dataset_sampling == 'fixed':
             df2_sample_test, df2_train = sampling_fixed_number_test(df2, config.sampling.test_percent_uvp6)
@@ -185,7 +191,7 @@ def sampling(config_path):
     df_test = df_test.replace('NaN', 0)
 
     selected_columns = df_test[['index', 'profile_id', 'object_id', 'depth', 'lat', 'lon', 'datetime', 'uvp_model',
-                           'label', 'relative_path']]
+                               'label', 'relative_path']]
 
     csv_path = sampling_path_test / ("sampled_images.csv")
     selected_columns.to_csv(csv_path)

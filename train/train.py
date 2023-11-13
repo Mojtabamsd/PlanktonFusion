@@ -17,20 +17,30 @@ import pandas as pd
 def train_cnn(config_path, input_path, output_path):
 
     config = Configuration(config_path, input_path, output_path)
+    phase = 'train'      # will train with whole dataset and testing results if there is a test file
+    # phase = 'train_val'  # will train with 80% dataset and testing results with the rest 20% of data
 
     # Create output directory
     input_folder = Path(input_path)
     output_folder = Path(output_path)
 
+    input_folder_train = input_folder / "train"
+    input_folder_test = input_folder / "test"
+
     console = Console(output_folder)
     console.info("Training started ...")
 
     sampled_images_csv_filename = "sampled_images.csv"
-    input_csv = input_folder / sampled_images_csv_filename
+    input_csv_train = input_folder_train / sampled_images_csv_filename
+    input_csv_test = input_folder_test / sampled_images_csv_filename
 
-    if not input_csv.is_file():
-        console.error("The input csv file", input_csv, "does not exist.")
-        console.quit("Input csv file does not exist.")
+    if not input_csv_train.is_file():
+        console.info("Label not provided for training")
+        input_csv_train = None
+
+    if not input_csv_test.is_file():
+        console.info("Label not provided for testing")
+        input_csv_test = None
 
     time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
     rel_training_path = Path("training" + time_str)
@@ -53,11 +63,11 @@ def train_cnn(config_path, input_path, output_path):
     ])
 
     # Create uvp dataset datasets for training and validation
-    train_dataset = UvpDataset(root_dir=input_folder,
+    train_dataset = UvpDataset(root_dir=input_folder_train,
                                num_class=config.sampling.num_class,
-                               csv_file=input_csv,
+                               csv_file=input_csv_train,
                                transform=transform,
-                               phase='train')
+                               phase=phase)
 
     # Create data loaders
     train_loader = DataLoader(train_dataset,
@@ -147,13 +157,29 @@ def train_cnn(config_path, input_path, output_path):
     console.info(f"Final model weights saved to {saved_weights_file}")
 
     # Create uvp dataset datasets for training and validation
-    train_dataset.phase = 'val'
-    val_dataset = train_dataset
+    if phase == 'train_val':
+        console.info('Testing model with validation subset')
+        train_dataset.phase = 'val'
+        val_dataset = train_dataset
 
-    # Create data loaders
-    val_loader = DataLoader(val_dataset,
-                            batch_size=config.training.batch_size,
-                            shuffle=True)
+        val_loader = DataLoader(val_dataset,
+                                batch_size=config.training.batch_size,
+                                shuffle=True)
+
+    elif input_csv_test.is_file():
+        console.info('Testing model with folder test')
+
+        test_dataset = UvpDataset(root_dir=input_folder_test,
+                                  num_class=config.sampling.num_class,
+                                  csv_file=input_csv_test,
+                                  transform=transform,
+                                  phase='test')
+
+        val_loader = DataLoader(test_dataset,
+                                batch_size=config.classifier.batch_size,
+                                shuffle=True)
+    else:
+        console.quit('no data for testing model')
 
     # Evaluation loop
     model.eval()

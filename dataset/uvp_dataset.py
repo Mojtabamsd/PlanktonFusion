@@ -18,7 +18,7 @@ class UvpDataset(Dataset):
         if self.csv_file:
             self.data_frame = pd.read_csv(csv_file)
 
-        if self.phase == 'train':
+        if self.phase == 'train_val':
             self.data_frame, self.data_frame_val = train_test_split(self.data_frame, test_size=0.2, random_state=42)
 
         # regrouping

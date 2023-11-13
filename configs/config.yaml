@@ -11,13 +11,13 @@ sampling:
   path_output: 'D:\mojmas\files\data\result_sampling'
   num_class: 13             # choose 13 or 23 classes
   sampling_method: 'fixed'  # choose 'fixed' or 'uniform' or 'stratified'
-  sampling_percent_uvp5: 1000
-  sampling_percent_uvp6: 1000
+  sampling_percent_uvp5: 10000
+  sampling_percent_uvp6: 10000
   target_size: [227, 227]  #image target size
   test_dataset_sampling: 'stratified' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
   test_percent_uvp5: 0.1  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
   test_percent_uvp6: 0.1
-  create_folder: True  # if True it will create sub-folders with class naming
+  create_folder: False  # if True it will create sub-folders with class naming
 
 
 training:
@@ -30,12 +30,12 @@ training:
 
 
 prediction:
-  path_model: 'D:\mojmas\files\data\result_sampling\training20230821093231'
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231106093200'
   batch_size: 2
 
 
 autoencoder:
-  architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder'
+  architecture_type: 'resnet18' # choose 'conv_autoencoder' or 'resnet18'
   latent_dim: 64
   batch_size: 256
   gray: True
@@ -45,10 +45,10 @@ autoencoder:
 
 
 classifier:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231103144312'  # if it's not NN write None
-  feature_type: 'conv_autoencoder'  # choose 'conv_autoencoder' or 'uvpec'
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231106093200'  # if it's not NN write None
+  feature_type: 'conv_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18'
   batch_size: 128
-  classifier_type: 'xgboost' # choose 'svm' or 'xgboost'
+  classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'
 
 
 #synthetic:
