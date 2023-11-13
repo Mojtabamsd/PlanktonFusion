@@ -1,5 +1,7 @@
 import numpy as np
 from PIL import Image
+from torchvision.transforms.functional import resized_crop
+import torch
 
 
 class RandomZoomIn:
@@ -7,15 +9,17 @@ class RandomZoomIn:
         self.zoom_range = zoom_range
 
     def __call__(self, img):
-        zoom_factor = np.random.uniform(self.zoom_range[0], self.zoom_range[1])
+        zoom_factor = torch.FloatTensor(1).uniform_(self.zoom_range[0], self.zoom_range[1]).item()
+
         width, height = img.size
         new_width = int(width * zoom_factor)
         new_height = int(height * zoom_factor)
-        left = (width - new_width) / 2
-        top = (height - new_height) / 2
-        right = (width + new_width) / 2
-        bottom = (height + new_height) / 2
-        return img.crop((left, top, right, bottom))
+
+        left = (width - new_width) // 2
+        top = (height - new_height) // 2
+
+        img = resized_crop(img, top, left, new_height, new_width, (height, width))
+        return img
 
 
 class RandomZoomOut:
@@ -23,12 +27,14 @@ class RandomZoomOut:
         self.zoom_range = zoom_range
 
     def __call__(self, img):
-        zoom_factor = np.random.uniform(self.zoom_range[0], self.zoom_range[1])
+        zoom_factor = torch.FloatTensor(1).uniform_(self.zoom_range[0], self.zoom_range[1]).item()
+
         width, height = img.size
         new_width = int(width / zoom_factor)
         new_height = int(height / zoom_factor)
-        return img.resize((new_width, new_height), Image.BILINEAR)
 
+        img = resized_crop(img, 0, 0, new_height, new_width, (height, width))
+        return img
 
 class GaussianNoise:
     def __init__(self, std=0.1):
