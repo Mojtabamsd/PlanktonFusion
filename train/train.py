@@ -78,10 +78,21 @@ def train_cnn(config_path, input_path, output_path):
                                transform=transform,
                                phase=phase)
 
-    # Create data loaders
-    train_loader = DataLoader(train_dataset,
-                              batch_size=config.training.batch_size,
-                              shuffle=True)
+    # # Create data loaders
+    # train_loader = DataLoader(train_dataset,
+    #                           batch_size=config.training.batch_size,
+    #                           shuffle=True)
+
+    class_counts = train_dataset.data_frame['label'].value_counts().sort_index().tolist()
+    total_samples = sum(class_counts)
+    class_weights = [total_samples / (config.sampling.num_class * count) for count in class_counts]
+    class_weights_tensor = torch.FloatTensor(class_weights)
+    class_weights_tensor = class_weights_tensor / class_weights_tensor.sum()
+
+    # oversampling the minority classes
+    sampler = torch.utils.data.WeightedRandomSampler(weights=class_weights_tensor,
+                                                     num_samples=len(train_dataset), replacement=True)
+    train_loader = DataLoader(train_dataset, batch_size=config.training.batch_size, sampler=sampler)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
@@ -130,7 +141,7 @@ def train_cnn(config_path, input_path, output_path):
         model.train()
         running_loss = 0.0
 
-        for images, labels, _ in train_loader:
+        for batch_idx, (images, labels, _) in enumerate(train_loader):
             images, labels = images.to(device), labels.to(device)
 
             optimizer.zero_grad()
@@ -140,6 +151,10 @@ def train_cnn(config_path, input_path, output_path):
             optimizer.step()
 
             running_loss += loss.item()
+
+            # # for debug
+            # from tools.image import save_img
+            # save_img(images, batch_idx, epoch, training_path/"augmented")
 
         average_loss = running_loss / len(train_loader)
         loss_values.append(average_loss)
