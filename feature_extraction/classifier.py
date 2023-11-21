@@ -127,11 +127,11 @@ def classifier(config_path, input_path, output_path):
         console.quit("Please select correct parameter for feature_type")
 
     train_dataset = UvpDataset(root_dir=input_folder_train,
-                              num_class=config.sampling.num_class,
-                              # csv_file=None,
-                              csv_file=input_csv_train,
-                              transform=transform,
-                              phase='test')
+                               num_class=config.sampling.num_class,
+                               # csv_file=None,
+                               csv_file=input_csv_train,
+                               transform=transform,
+                               phase='test')
 
     dataloader_train = DataLoader(train_dataset, batch_size=config.classifier.batch_size, shuffle=False)
 
