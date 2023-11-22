@@ -29,13 +29,14 @@ class SamplingConfig:
 
 
 class TrainingConfig:
-    def __init__(self, architecture_type, batch_size, gray, learning_rate, num_epoch, save_model_every_n_epoch):
+    def __init__(self, architecture_type, batch_size, gray, learning_rate, num_epoch, save_model_every_n_epoch, loss):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
         self.gray = gray
         self.learning_rate = learning_rate
         self.num_epoch = num_epoch
         self.save_model_every_n_epoch = save_model_every_n_epoch
+        self.loss = loss
 
 
 class PredictionConfig:

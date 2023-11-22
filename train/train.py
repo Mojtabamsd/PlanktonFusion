@@ -14,7 +14,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 from tools.augmentation import RandomZoomIn, RandomZoomOut, GaussianNoise
-from models.loss import FocalLoss
+from models.loss import FocalLoss, WeightedCrossEntropyLoss
 
 
 
@@ -79,21 +79,25 @@ def train_cnn(config_path, input_path, output_path):
                                transform=transform,
                                phase=phase)
 
-    # # Create data loaders
-    # train_loader = DataLoader(train_dataset,
-    #                           batch_size=config.training.batch_size,
-    #                           shuffle=True)
-
     class_counts = train_dataset.data_frame['label'].value_counts().sort_index().tolist()
     total_samples = sum(class_counts)
     class_weights = [total_samples / (config.sampling.num_class * count) for count in class_counts]
     class_weights_tensor = torch.FloatTensor(class_weights)
     class_weights_tensor = class_weights_tensor / class_weights_tensor.sum()
 
-    # oversampling the minority classes
-    sampler = torch.utils.data.WeightedRandomSampler(weights=class_weights_tensor,
-                                                     num_samples=len(train_dataset), replacement=True)
-    train_loader = DataLoader(train_dataset, batch_size=config.training.batch_size, sampler=sampler)
+    oversampling = False
+    if oversampling:
+        # oversampling the minority classes
+        sampler = torch.utils.data.WeightedRandomSampler(weights=class_weights_tensor,
+                                                         num_samples=len(train_dataset), replacement=True)
+        train_loader = DataLoader(train_dataset,
+                                  batch_size=config.training.batch_size,
+                                  sampler=sampler)
+
+    else:
+        train_loader = DataLoader(train_dataset,
+                                  batch_size=config.training.batch_size,
+                                  shuffle=True)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
@@ -132,8 +136,14 @@ def train_cnn(config_path, input_path, output_path):
     console.info(memory_usage(config, model, device))
 
     # Loss criterion and optimizer
-    # criterion = nn.CrossEntropyLoss()
-    criterion = FocalLoss(alpha=1, gamma=2)
+    if config.training.loss == 'cross_entropy':
+        criterion = nn.CrossEntropyLoss()
+    elif config.training.loss == 'cross_entropy_weight':
+        class_weights_tensor = class_weights_tensor.to(device)
+        criterion = WeightedCrossEntropyLoss(weight=class_weights_tensor)
+    elif config.training.loss == 'focal':
+        criterion = FocalLoss(alpha=1, gamma=2)
+
     optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
     loss_values = []
