@@ -14,14 +14,12 @@ class FocalLoss(nn.Module):
         # Compute the cross-entropy loss
         ce_loss = F.cross_entropy(inputs, targets, reduction='none')
 
-        # Create a one-hot encoded target tensor
+        # Calculate focal weights
         one_hot = F.one_hot(targets, num_classes=inputs.size(1)).float()
-
-        # Compute the focal weights
-        focal_weights = torch.where(one_hot == 1, self.alpha * (1 - inputs.softmax(dim=1))**self.gamma, (1 - self.alpha) * inputs.softmax(dim=1)**self.gamma)
+        focal_weights = torch.where(one_hot == 1, self.alpha * (1 - inputs.softmax(dim=1)) ** self.gamma, (1 - self.alpha) * inputs.softmax(dim=1) ** self.gamma)
 
         # Apply the focal weights to the cross-entropy loss
-        focal_loss = ce_loss * focal_weights
+        focal_loss = ce_loss * focal_weights[:, 1]
 
         # Apply reduction if specified
         if self.reduction == 'mean':
