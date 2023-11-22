@@ -14,6 +14,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 from tools.augmentation import RandomZoomIn, RandomZoomOut, GaussianNoise
+from models.loss import FocalLoss
 
 
 
@@ -131,7 +132,8 @@ def train_cnn(config_path, input_path, output_path):
     console.info(memory_usage(config, model, device))
 
     # Loss criterion and optimizer
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = FocalLoss(alpha=1, gamma=2)
     optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
     loss_values = []
