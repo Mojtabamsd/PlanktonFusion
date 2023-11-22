@@ -65,8 +65,8 @@ def train_cnn(config_path, input_path, output_path):
         RandomHorizontalFlip(),
         RandomRotation(degrees=15),
         RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
-        RandomZoomIn(zoom_range=(0.8, 1.0)),
-        RandomZoomOut(zoom_range=(1.0, 1.2)),
+        # RandomZoomIn(zoom_range=(0.8, 1.0)),
+        # RandomZoomOut(zoom_range=(1.0, 1.2)),
         GaussianNoise(std=0.1),
         transforms.ToTensor(),
     ])
