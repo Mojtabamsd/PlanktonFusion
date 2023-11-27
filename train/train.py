@@ -85,11 +85,12 @@ def train_cnn(config_path, input_path, output_path):
     class_weights_tensor = torch.FloatTensor(class_weights)
     class_weights_tensor = class_weights_tensor / class_weights_tensor.sum()
 
-    oversampling = False
-    if oversampling:
-        # oversampling the minority classes
+    class_balancing = False
+    if class_balancing:
+        # class balanced sampling
         sampler = torch.utils.data.WeightedRandomSampler(weights=class_weights_tensor,
-                                                         num_samples=len(train_dataset), replacement=True)
+                                                         num_samples=len(train_dataset),
+                                                         replacement=True)
         train_loader = DataLoader(train_dataset,
                                   batch_size=config.training.batch_size,
                                   sampler=sampler)
