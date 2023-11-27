@@ -13,7 +13,7 @@ from tools.utils import report_to_df, plot_loss, memory_usage
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
-from tools.augmentation import RandomZoomIn, RandomZoomOut, GaussianNoise
+from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss
 
 
@@ -66,8 +66,6 @@ def train_cnn(config_path, input_path, output_path):
         RandomHorizontalFlip(),
         RandomRotation(degrees=15),
         RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
-        # RandomZoomIn(zoom_range=(0.8, 1.0)),
-        # RandomZoomOut(zoom_range=(1.0, 1.2)),
         GaussianNoise(std=0.1),
         transforms.ToTensor(),
     ])

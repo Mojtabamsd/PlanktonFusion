@@ -27,22 +27,23 @@ training:
   learning_rate: 0.001
   num_epoch: 60
   save_model_every_n_epoch: 20
-  loss: 'focal' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal'
+  loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal'
 
 
 prediction:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231106093200'
+  path_model: 'D:\mojmas\files\data\result_sampling\training20231123092750'
   batch_size: 2
 
 
 autoencoder:
   architecture_type: 'resnet18' # choose 'conv_autoencoder' or 'resnet18'
-  latent_dim: 64
+  latent_dim: 16
   batch_size: 256
   gray: True
-  learning_rate: 0.00001
+  learning_rate: 0.001
   num_epoch: 100
   save_model_every_n_epoch: 20
+  loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse'
 
 
 classifier:

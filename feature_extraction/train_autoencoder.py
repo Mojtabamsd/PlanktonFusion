@@ -11,6 +11,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tools.utils import plot_loss, memory_usage
+from models.loss import FocalLoss, WeightedCrossEntropyLoss
+from tools.augmentation import GaussianNoise
+from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 
 
 def train_autoencoder(config_path, input_path, output_path):
@@ -51,12 +54,28 @@ def train_autoencoder(config_path, input_path, output_path):
         transforms.ToTensor(),
     ])
 
+    # Define data transformations
+    transform = transforms.Compose([
+        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
+        RandomHorizontalFlip(),
+        RandomRotation(degrees=15),
+        RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
+        GaussianNoise(std=0.1),
+        transforms.ToTensor(),
+    ])
+
     # Create uvp dataset datasets for training and validation
     train_dataset = UvpDataset(root_dir=input_folder,
                                num_class=config.sampling.num_class,
                                csv_file=input_csv,
                                transform=transform,
                                phase='train')
+
+    class_counts = train_dataset.data_frame['label'].value_counts().sort_index().tolist()
+    total_samples = sum(class_counts)
+    class_weights = [total_samples / (config.sampling.num_class * count) for count in class_counts]
+    class_weights_tensor = torch.FloatTensor(class_weights)
+    class_weights_tensor = class_weights_tensor / class_weights_tensor.sum()
 
     # Create data loaders
     train_loader = DataLoader(train_dataset,
@@ -71,16 +90,25 @@ def train_autoencoder(config_path, input_path, output_path):
         model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
                                 input_size=config.sampling.target_size,
                                 gray=config.autoencoder.gray)
-        criterion = nn.MSELoss()
 
     elif config.autoencoder.architecture_type == 'resnet18':
         model = ResNetCustom(num_classes=config.sampling.num_class,
                              latent_dim=config.autoencoder.latent_dim,
                              gray=config.autoencoder.gray)
-        criterion = nn.CrossEntropyLoss()
 
     else:
         console.quit("Please select correct parameter for architecture_type")
+
+    # Loss criterion and optimizer
+    if config.autoencoder.loss == 'cross_entropy':
+        criterion = nn.CrossEntropyLoss()
+    elif config.autoencoder.loss == 'cross_entropy_weight':
+        class_weights_tensor = class_weights_tensor.to(device)
+        criterion = WeightedCrossEntropyLoss(weight=class_weights_tensor)
+    elif config.autoencoder.loss == 'focal':
+        criterion = FocalLoss(alpha=1, gamma=2)
+    elif config.autoencoder.loss == 'mse':
+        criterion = nn.MSELoss()
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
