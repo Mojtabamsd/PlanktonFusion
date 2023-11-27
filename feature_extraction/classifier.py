@@ -280,9 +280,17 @@ def train_classifier(model, dataloader, config, device, console):
         return svm_classifier
 
     elif config.classifier.classifier_type == 'xgboost':
+
         xg_classifier = xgb.XGBClassifier()
         xg_classifier.fit(x_train, y_train)
 
+        # # weighted sampling
+        # class_weights = len(y_train) / (len(np.unique(y_train)) * np.bincount(y_train))
+        # sample_weights = np.array([class_weights[label] for label in y_train])
+        # xg_classifier = xgb.XGBClassifier()
+        # xg_classifier.fit(x_train, y_train, sample_weight=sample_weights)
+
+        # # LOV setting
         # num_class = 13
         # random_state = 42
         # n_jobs = 12
