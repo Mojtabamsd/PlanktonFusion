@@ -155,17 +155,17 @@ class ResNetCustom(nn.Module):
         # Remove the original classification head
         self.features = nn.Sequential(self.conv1, *list(resnet.children())[1:-1])
 
-        # Add a new classification head
-        self.classification_head = nn.Linear(resnet.fc.in_features, num_classes)
-
         # Add a latent layer
         self.latent_layer = nn.Linear(resnet.fc.in_features, latent_dim)
+
+        # Add a new classification head
+        self.classification_head = nn.Linear(latent_dim, num_classes)
 
     def forward(self, x):
         features = self.features(x)
         features = torch.flatten(features, 1)
-        classification_output = self.classification_head(features)
         latent_output = self.latent_layer(features)
+        classification_output = self.classification_head(latent_output)
 
         return classification_output, latent_output
 
