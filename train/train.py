@@ -6,6 +6,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
+from models.classifier_vit import ViT
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -17,8 +18,7 @@ from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss
 
 
-
-def train_cnn(config_path, input_path, output_path):
+def train_nn(config_path, input_path, output_path):
 
     config = Configuration(config_path, input_path, output_path)
     phase = 'train'      # will train with whole dataset and testing results if there is a test file
@@ -121,6 +121,10 @@ def train_cnn(config_path, input_path, output_path):
         model = ShuffleNetCustom(num_classes=config.sampling.num_class,
                                  input_size=config.sampling.target_size,
                                  gray=config.training.gray)
+
+    elif config.training.architecture_type == 'vit_base':
+        model = ViT(input_size=config.sampling.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
+                    dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
 
     else:
         console.quit("Please select correct parameter for architecture_type")
