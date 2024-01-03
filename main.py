@@ -3,7 +3,7 @@ import os
 import sys
 from tools import console
 from data_preparation.sampling import sampling
-from train.train import train_cnn
+from train.train import train_nn
 from inference.prediction import prediction
 from feature_extraction.train_autoencoder import train_autoencoder
 from feature_extraction.classifier import classifier
@@ -86,7 +86,7 @@ def call_sampling(args):
 
 
 def call_training(args):
-    train_cnn(args.configuration_file, args.input_folder, args.output_folder)
+    train_nn(args.configuration_file, args.input_folder, args.output_folder)
 
 
 def call_prediction(args):
