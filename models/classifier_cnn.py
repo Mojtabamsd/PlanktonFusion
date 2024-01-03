@@ -97,8 +97,8 @@ class MobileNetCustom(nn.Module):
         )
 
         # Adjust the first convolutional layer to accept the specified number of channels
-        self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 32, kernel_size=(3, 3),
-                                                  stride=(2, 2), padding=(1, 1), bias=False)
+        self.mobilenet.features[0][0] = nn.Conv2d(input_channels, 64, kernel_size=(7, 7),
+                                                  stride=(2, 2), padding=(3, 3), bias=False)
 
     def forward(self, x):
         return self.mobilenet(x)
