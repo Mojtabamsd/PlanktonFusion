@@ -6,7 +6,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
-from models.classifier_vit import ViT
+from models.classifier_vit import ViT, ViTPretrained
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -125,6 +125,10 @@ def train_nn(config_path, input_path, output_path):
     elif config.training.architecture_type == 'vit_base':
         model = ViT(input_size=config.sampling.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
                     dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
+
+    elif config.training.architecture_type == 'vit_pretrained':
+        pretrained_model_name = "google/vit-base-patch16-224-in21k"
+        model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
 
     else:
         console.quit("Please select correct parameter for architecture_type")

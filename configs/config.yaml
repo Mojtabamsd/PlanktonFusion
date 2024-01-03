@@ -21,7 +21,7 @@ sampling:
 
 
 training:
-  architecture_type: 'vit_base' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base'
+  architecture_type: 'vit_pretrained' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
   batch_size: 32
   gray: True
   learning_rate: 0.001

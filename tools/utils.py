@@ -124,14 +124,15 @@ def plot_f1_scores(out_path_name, model_names, *dataframes):
 def memory_usage(config, model, device):
 
     # Create a dummy input tensor
-    input_tensor = torch.randn((2, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
-    input_tensor = input_tensor.to(device)
+    x = torch.randn((2, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
+    x = x.to(device)
+    normalized_x = (x - x.min()) / (x.max() - x.min())
 
     # Measure memory usage
     if device.type == 'cuda':
         # Measure GPU memory usage
         gpu_memory_before = torch.cuda.memory_allocated(device=device)
-        _ = model(input_tensor)
+        _ = model(normalized_x)
         gpu_memory_after = torch.cuda.memory_allocated(device=device)
         gpu_memory_used = gpu_memory_after - gpu_memory_before
 
@@ -139,7 +140,7 @@ def memory_usage(config, model, device):
     else:
         # Measure CPU memory usage
         cpu_memory_before = psutil.virtual_memory().used
-        _ = model(input_tensor)
+        _ = model(normalized_x)
         cpu_memory_after = psutil.virtual_memory().used
         cpu_memory_used = cpu_memory_after - cpu_memory_before
 
