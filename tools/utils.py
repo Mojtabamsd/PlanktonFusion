@@ -103,13 +103,16 @@ def plot_f1_scores(out_path_name, model_names, *dataframes):
 
     # Set up the bar plot using seaborn
     plt.figure(figsize=(16, 10))
-    sns.barplot(x="Class Name", y="f1-score", hue="level_0", data=combined_report.reset_index())
+    ax = sns.barplot(x="Class Name", y="f1-score", hue="level_0", data=combined_report.reset_index())
+
+    # Rotate x-axis labels by 90 degrees
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
 
     # Customize the plot
-    plt.xlabel('Class Name')
+    plt.xlabel('')
     plt.ylabel('f1-score')
-    plt.title('f1-scores for Each Class by Model')
-    plt.legend(title="Model", loc="upper left", bbox_to_anchor=(1, 1))
+    # plt.title('f1-scores for Each Class by Model')
+    legend = plt.legend(title="Model", loc="upper left", bbox_to_anchor=(1, 1))
 
     # Show the plot
     plt.tight_layout()
