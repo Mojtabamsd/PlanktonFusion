@@ -22,4 +22,4 @@ dependencies:
     - pandas
     - matplotlib
     - psutil
-    - transformers
+    - timm
