@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import timm
 
 
 class ViT(nn.Module):
@@ -48,5 +49,33 @@ class ViT(nn.Module):
         x = self.fc(x)
 
         return x
+
+
+class ViTPretrained(nn.Module):
+    def __init__(self, model_name='vit_base_patch16_224', num_classes=13, gray=False):
+        super(ViTPretrained, self).__init__()
+
+        if gray:
+            input_channels = 1
+        else:
+            input_channels = 3
+
+        # Load the pre-trained ViT backbone
+        self.backbone = timm.create_model(model_name, pretrained=True)
+
+        # Modify the input channels of the first layer
+        self.backbone.patch_embed.proj = nn.Conv2d(
+            input_channels, self.backbone.patch_embed.proj.out_channels,
+            kernel_size=self.backbone.patch_embed.proj.kernel_size,
+            stride=self.backbone.patch_embed.proj.stride,
+            padding=self.backbone.patch_embed.proj.padding
+        )
+
+        # Modify the final classification layer
+        self.backbone.head = nn.Linear(self.backbone.head.in_features, num_classes)
+
+    def forward(self, x):
+        return self.backbone(x)
+
 
 

@@ -127,7 +127,7 @@ def train_nn(config_path, input_path, output_path):
                     dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
 
     elif config.training.architecture_type == 'vit_pretrained':
-        pretrained_model_name = "google/vit-base-patch16-224-in21k"
+        pretrained_model_name = "vit_base_patch16_224"
         model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
 
     else:
