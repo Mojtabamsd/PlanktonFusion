@@ -15,10 +15,10 @@ def find_min_point_inside(image, mask):
     return min_point
 
 
-def region_growing(image, seed, max_iterations=30000):
+def region_growing(image, seed, max_iterations=20000):
     mask = np.zeros_like(image, dtype=np.bool)
     region_mean = image[seed]
-    tolerance = 50  # Adjust this threshold based on your image characteristics
+    tolerance = 25  # Adjust this threshold based on your image characteristics
     iterations = 0
 
     stack = [seed]
@@ -56,16 +56,16 @@ root = r'D:\mojmas\files\Projects\Lisstholo\test'
 
 for file in Path(root).glob('*.png'):
     input_path = str(file)
-    output_path = str(file.parent / (file.stem + ".out.png"))
-    gray_image = cv2.imread(input_path, 0)
+    output_path = str(file.parent / 'seg' / (file.stem + ".out.png"))
+    img = cv2.imread(input_path, 0)
 
-    gray_image = cv2.medianBlur(gray_image, 3)
+    gray_image = cv2.medianBlur(img, 3)
     # gray_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
 
-    # Get the initial seed point from the user
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(gray_image, cmap='gray')
-    ax.set_title('Click to provide a seed point for region growing')
+    # # Get the initial seed point from the user
+    # fig, ax = plt.subplots(figsize=(8, 8))
+    # ax.imshow(gray_image, cmap='gray')
+    # ax.set_title('Click to provide a seed point for region growing')
 
     # seed_point = plt.ginput(1, show_clicks=True)[0]
     # seed_point = (int(seed_point[1]), int(seed_point[0]))
@@ -78,19 +78,20 @@ for file in Path(root).glob('*.png'):
     contours = measure.find_contours(segmentation_mask, 0.5)
 
     # Filter out small contours based on area
-    min_contour_area = 40  # Adjust this threshold based on your requirements
+    min_contour_area = 30  # Adjust this threshold based on your requirements
     filtered_contours = [contour for contour in contours if contour.shape[0] > min_contour_area]
 
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(gray_image, cmap='gray')
+    # # Display the original image and the segmented image with the filtered contour
+    # fig, ax = plt.subplots(figsize=(8, 8))
+    # ax.imshow(gray_image, cmap='gray')
+    #
+    # for contour in filtered_contours:
+    #     ax.plot(contour[:, 1], contour[:, 0], '-r', linewidth=2)
+    #
+    # ax.set_title('Region Growing Contour Segmentation (Filtered)')
+    # plt.show()
 
-    for contour in filtered_contours:
-        ax.plot(contour[:, 1], contour[:, 0], '-r', linewidth=2)
-
-    ax.set_title('Region Growing Contour Segmentation (Filtered)')
-    plt.show()
-
-    threshold_value_point = 50
+    threshold_value_point = 45
 
     while True:
         outside_points = np.where((gray_image < threshold_value_point) & ~segmentation_mask)
@@ -108,20 +109,29 @@ for file in Path(root).glob('*.png'):
 
         new_filtered_contours = [contour for contour in new_contours if contour.shape[0] > min_contour_area]
 
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.imshow(gray_image, cmap='gray')
-
-        for contour in filtered_contours + new_filtered_contours:
-            ax.plot(contour[:, 1], contour[:, 0], '-r', linewidth=2)
-
-        ax.set_title('Region Growing Contour Segmentation (Filtered + Iterative)')
-        plt.show()
+        # fig, ax = plt.subplots(figsize=(8, 8))
+        # ax.imshow(gray_image, cmap='gray')
+        #
+        # for contour in filtered_contours + new_filtered_contours:
+        #     ax.plot(contour[:, 1], contour[:, 0], '-r', linewidth=2)
+        #
+        # ax.set_title('Region Growing Contour Segmentation (Filtered + Iterative)')
+        # plt.show()
+        filtered_contours += new_filtered_contours
 
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(gray_image, cmap='gray')
+    ax.imshow(img, cmap='gray')
 
+    union_area = np.zeros_like(segmentation_mask, dtype=np.bool)
     for contour in filtered_contours:
-        ax.plot(contour[:, 1], contour[:, 0], '-r', linewidth=2)
+        union_area |= measure.grid_points_in_poly(segmentation_mask.shape, contour)
+
+    merged_contours = measure.find_contours(union_area, 0.5)
+    merged_contours = [contour for contour in merged_contours if contour.shape[0] > min_contour_area]
+
+    for merged_contour in merged_contours:
+        ax.plot(merged_contour[:, 1], merged_contour[:, 0], '-r', linewidth=2)
 
     ax.set_title('Final Segmentation Result')
+    plt.savefig(output_path)
     plt.show()
