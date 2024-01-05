@@ -122,8 +122,19 @@ for file in Path(root).glob('*.png'):
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.imshow(img, cmap='gray')
 
+    # Remove contours based on average mean intensity threshold
+    avg_intensity_threshold = 60  # Adjust this threshold based on your requirements
+    filtered_merged_contours = []
+
+    for filtered_contour in filtered_contours:
+        contour_coords = np.array(list(zip(filtered_contour[:, 0].astype(int), filtered_contour[:, 1].astype(int))))
+        region_mean = np.mean(gray_image[contour_coords[:, 0], contour_coords[:, 1]])
+
+        if region_mean <= avg_intensity_threshold:
+            filtered_merged_contours.append(filtered_contour)
+
     union_area = np.zeros_like(segmentation_mask, dtype=np.bool)
-    for contour in filtered_contours:
+    for contour in filtered_merged_contours:
         union_area |= measure.grid_points_in_poly(segmentation_mask.shape, contour)
 
     merged_contours = measure.find_contours(union_area, 0.5)
