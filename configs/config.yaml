@@ -21,13 +21,13 @@ sampling:
 
 
 training:
-  architecture_type: 'vit_pretrained' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
+  architecture_type: 'vit_base' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
   batch_size: 32
   gray: True
   learning_rate: 0.001
   num_epoch: 60
   save_model_every_n_epoch: 20
-  loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal'
+  loss: 'LACE' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
 
 
 prediction:

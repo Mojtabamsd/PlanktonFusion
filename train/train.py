@@ -15,7 +15,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 from tools.augmentation import GaussianNoise
-from models.loss import FocalLoss, WeightedCrossEntropyLoss
+from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss
 
 
 def train_nn(config_path, input_path, output_path):
@@ -150,6 +150,9 @@ def train_nn(config_path, input_path, output_path):
         criterion = WeightedCrossEntropyLoss(weight=class_weights_tensor)
     elif config.training.loss == 'focal':
         criterion = FocalLoss(alpha=1, gamma=2)
+    elif config.training.loss == 'LACE':
+        class_weights_tensor = class_weights_tensor.to(device)
+        criterion = LogitAdjustmentLoss(weight=class_weights_tensor)
 
     optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 

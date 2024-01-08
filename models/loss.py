@@ -48,3 +48,19 @@ class FocalLoss(nn.Module):
             focal_loss = torch.sum(focal_loss)
 
         return focal_loss
+
+
+class LogitAdjustmentLoss(nn.Module):
+    def __init__(self, weight=None):
+        super(LogitAdjustmentLoss, self).__init__()
+        self.class_weights = nn.Parameter(weight)
+
+    def forward(self, logits, targets):
+        # Apply logit adjustment
+        adjusted_logits = logits * self.class_weights
+
+        # Compute cross-entropy loss
+        loss = F.cross_entropy(adjusted_logits, targets)
+
+        return loss
+
