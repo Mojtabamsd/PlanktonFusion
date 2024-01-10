@@ -55,5 +55,6 @@ classifier:
 memory:
   visual_embedded_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231208150500'  #path of embedding model
   loss: 'cross_entropy' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
+  k: 10  #number of k-NN
 
 

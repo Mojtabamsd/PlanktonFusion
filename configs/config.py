@@ -68,9 +68,10 @@ class ClassifierConfig:
 
 
 class MemoryConfig:
-    def __init__(self, visual_embedded_model, loss):
+    def __init__(self, visual_embedded_model, loss, k):
         self.visual_embedded_model = visual_embedded_model
         self.loss = loss
+        self.k = k
 
 
 class Configuration:
