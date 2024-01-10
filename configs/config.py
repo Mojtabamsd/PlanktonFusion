@@ -67,6 +67,12 @@ class ClassifierConfig:
         self.classifier_type = classifier_type
 
 
+class MemoryConfig:
+    def __init__(self, visual_embedded_model, loss):
+        self.visual_embedded_model = visual_embedded_model
+        self.loss = loss
+
+
 class Configuration:
     def __init__(self, config_file_path, input_path=None, output_path=None):
         with open(config_file_path, "r") as config_file:
@@ -80,6 +86,7 @@ class Configuration:
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
         self.classifier = ClassifierConfig(**config_data['classifier'])
+        self.memory = ClassifierConfig(**config_data['memory'])
 
     def write(self, filename):
         filename = Path(filename)

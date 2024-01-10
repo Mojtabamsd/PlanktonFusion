@@ -7,6 +7,7 @@ from train.train import train_nn
 from inference.prediction import prediction
 from feature_extraction.train_autoencoder import train_autoencoder
 from feature_extraction.classifier import classifier
+from train.train_memory_attention import train_memory
 
 
 def add_arguments(obj):
@@ -73,6 +74,13 @@ def main(args=None):
     add_arguments(parser_classifier)
     parser_classifier.set_defaults(func=call_classifier)
 
+    # memory attention
+    parser_memory = subparsers.add_parser(
+        "memory", help="Train a memory attention"
+    )
+    add_arguments(parser_memory)
+    parser_memory.set_defaults(func=call_memory)
+
     if len(sys.argv) == 1 and args is None:
         # Show help if no args provided
         parser.print_help(sys.stderr)
@@ -99,6 +107,10 @@ def call_autoencoder(args):
 
 def call_classifier(args):
     classifier(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_memory(args):
+    train_memory(args.configuration_file, args.input_folder, args.output_folder)
 
 
 if __name__ == "__main__":
