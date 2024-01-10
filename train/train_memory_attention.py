@@ -149,9 +149,117 @@ def train_memory(config_path, input_path, output_path):
                query_size=config.autoencoder.latent_dim,
                memory_size=config.autoencoder.latent_dim,
                attention_units=256,
+               num_dense_layers=1,
                num_classes=config.sampling.num_class,
                k=config.memory.k)
 
+    # Training loop
+    for epoch in range(config.training.num_epoch):
+        model.train()
+        running_loss = 0.0
+
+        for batch_idx, (images, labels, _) in enumerate(train_loader):
+            images, labels = images.to(device), labels.to(device)
+
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+
+            # # for debug
+            # from tools.image import save_img
+            # save_img(images, batch_idx, epoch, training_path/"augmented")
+
+        average_loss = running_loss / len(train_loader)
+        loss_values.append(average_loss)
+        console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
+
+        # save intermediate weight
+        if (epoch + 1) % config.training.save_model_every_n_epoch == 0:
+            # Save the model weights
+            saved_weights = f'model_weights_epoch_{epoch + 1}.pth'
+            saved_weights_file = training_path / saved_weights
+
+            console.info(f"Model weights saved to {saved_weights_file}")
+            torch.save(model.state_dict(), saved_weights_file)
+
+    # Create a plot of the loss values
+    plot_loss(loss_values, num_epoch=config.training.num_epoch, training_path=config.training_path)
+
+    # Save the model's state dictionary to a file
+    saved_weights = "model_weights_final.pth"
+    saved_weights_file = training_path / saved_weights
+
+    torch.save(model.state_dict(), saved_weights_file)
+
+    console.info(f"Final model weights saved to {saved_weights_file}")
+
+    # Create uvp dataset datasets for training and validation
+    if phase == 'train_val':
+        console.info('Testing model with validation subset')
+        train_dataset.phase = 'val'
+        val_dataset = train_dataset
+
+        val_loader = DataLoader(val_dataset,
+                                batch_size=config.training.batch_size,
+                                shuffle=True)
+
+    elif input_csv_test is not None:
+        console.info('Testing model with folder test')
+
+        test_dataset = UvpDataset(root_dir=input_folder_test,
+                                  num_class=config.sampling.num_class,
+                                  csv_file=input_csv_test,
+                                  transform=transform,
+                                  phase='test')
+
+        val_loader = DataLoader(test_dataset,
+                                batch_size=config.classifier.batch_size,
+                                shuffle=True)
+    else:
+        console.quit('no data for testing model')
+
+    # Evaluation loop
+    model.eval()
+    all_labels = []
+    all_preds = []
+
+    with torch.no_grad():
+        for images, labels, _ in val_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+
+            all_labels.extend(labels.cpu().numpy())
+            all_preds.extend(preds.cpu().numpy())
+
+    report = classification_report(
+        all_labels,
+        all_preds,
+        target_names=train_dataset.label_to_int,
+        digits=6,
+    )
+
+    conf_mtx = confusion_matrix(
+        all_labels,
+        all_preds,
+    )
+
+    df = report_to_df(report)
+    report_filename = training_path / 'report_evaluation.csv'
+    df.to_csv(report_filename)
+
+    df = pd.DataFrame(conf_mtx)
+    conf_mtx_filename = training_path / 'conf_matrix_evaluation.csv'
+    df.to_csv(conf_mtx_filename)
+
+    console.info('************* Evaluation Report *************')
+    console.info(report)
+    console.save_log(training_path)
 
 
 
