@@ -14,6 +14,8 @@ from tools.utils import plot_loss, memory_usage
 from models.loss import FocalLoss, WeightedCrossEntropyLoss
 from tools.augmentation import GaussianNoise
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
+import numpy as np
+import pandas as pd
 
 
 def train_autoencoder(config_path, input_path, output_path):
@@ -168,7 +170,32 @@ def train_autoencoder(config_path, input_path, output_path):
 
     console.info(f"Final model weights saved to {saved_weights_file}")
 
+    # save latent features
+    test_dataset = UvpDataset(root_dir=input_folder,
+                              num_class=config.sampling.num_class,
+                              csv_file=input_csv,
+                              transform=transform,
+                              phase='test')
 
+    dataloader_test = DataLoader(test_dataset, batch_size=config.classifier.batch_size, shuffle=False)
+
+    all_labels = []
+    latent_vectors = []
+    with torch.no_grad():
+        for index, (images, labels, img_names) in enumerate(dataloader_test):
+            images = images.to(device)
+            _, latent = model(images)
+
+            latent_vectors.extend(latent.cpu().numpy())
+            all_labels.append(labels.data.cpu().detach().numpy())
+
+    all_labels = np.concatenate(all_labels).ravel()
+    df = pd.DataFrame(latent_vectors, columns=['latent{}'.format(i) for i in range(1, latent_vectors[0].size + 1)])
+    int_to_label = {v: k for k, v in dataloader_test.dataset.label_to_int.items()}
+    df['labels'] = [int_to_label[label] for label in all_labels]
+
+    report_filename = training_path / 'features.feather'
+    df.to_feather(report_filename)
 
 
 
