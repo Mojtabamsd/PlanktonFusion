@@ -138,13 +138,15 @@ class ConvAutoencoder(nn.Module):
 
 
 class ResNetCustom(nn.Module):
-    def __init__(self, num_classes=13, latent_dim=16, gray=False, pretrained=None):
+    def __init__(self, num_classes=13, latent_dim=16, gray=False, pretrained=None, encoder_mode=False):
         super(ResNetCustom, self).__init__()
 
         if gray:
             input_channels = 1
         else:
             input_channels = 3
+
+        self.encoder_mode = encoder_mode
 
         # Load a pre-trained ResNet18 model
         resnet = models.resnet18(pretrained=pretrained)
@@ -165,8 +167,11 @@ class ResNetCustom(nn.Module):
         features = self.features(x)
         features = torch.flatten(features, 1)
         latent_output = self.latent_layer(features)
-        classification_output = self.classification_head(latent_output)
 
+        if self.encoder_mode:
+            return latent_output
+
+        classification_output = self.classification_head(latent_output)
         return classification_output, latent_output
 
 
