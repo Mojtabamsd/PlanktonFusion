@@ -143,15 +143,7 @@ def train_memory(config_path, input_path, output_path):
 
     # load visual embedding and attention model
 
-    model = MA(model_name=config.autoencoder.architecture_type,
-               weights_path=config.memory.path_model,
-               visual_encoder_size=config.autoencoder.latent_dim,
-               query_size=config.autoencoder.latent_dim,
-               memory_size=config.autoencoder.latent_dim,
-               attention_units=256,
-               num_dense_layers=1,
-               num_classes=config.sampling.num_class,
-               k=config.memory.k)
+    model = MA(config)
 
     # Training loop
     for epoch in range(config.training.num_epoch):

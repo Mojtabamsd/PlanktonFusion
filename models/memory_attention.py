@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from models.autoencoder import ConvAutoencoder, ResNetCustom
 
 
 class MemoryAttentionModule(nn.Module):
@@ -35,25 +36,30 @@ class MemoryAttentionModule(nn.Module):
 
 
 class MA(nn.Module):
-    def __init__(self, model_name, weights_path, visual_encoder_size, query_size, memory_size, attention_units,
-                 num_dense_layers, num_classes, k):
+    def __init__(self, config):
         super(MA, self).__init__()
 
-        self.k = k
+        self.model_name = config.autoencoder.architecture_type
+        self.weights_path = config.memory.path_model
+        self.visual_encoder_size = config.autoencoder.latent_dim
+        self.query_size = config.autoencoder.latent_dim
+        self.memory_size = config.autoencoder.latent_dim
+        self.attention_units = 256
+        self.num_dense_layers = 1
+        self.num_classes = config.sampling.num_class
+        self.k = config.memory.k
+        self.input_size = config.sampling.target_size
+        self.gray = config.autoencoder.gray
 
         # Visual encoder
-        self.model_name = model_name
-        self.weights_path = weights_path
-        self.visual_encoder_size = visual_encoder_size
         self.visual_encoder = self.load_pretrained_visual_encoder()
 
         # Linear layer for classification
-        self.classification_layer = nn.Linear(query_size, num_classes)
+        self.classification_layer = nn.Linear(self.query_size, self.num_classes)
 
         # Memory Attention Module
-        self.attention_units = attention_units
-        self.num_dense_layers = num_dense_layers
-        self.memory_attention = MemoryAttentionModule(query_size, memory_size, attention_units, num_dense_layers)
+        self.memory_attention = MemoryAttentionModule(self.query_size, self.memory_size, self.attention_units,
+                                                      self.num_dense_layers)
 
     def forward(self, visual_input, query_input, memory_keys):
         # Visual encoding for query
@@ -74,12 +80,14 @@ class MA(nn.Module):
         return output
 
     def load_pretrained_visual_encoder(self):
-        if self.model_name == 'v_em1':
-            model = nn.Linear(self.visual_encoder_size,
-                              self.visual_encoder_size)
-        elif self.model_name == 'v_em2':
-            model = nn.Linear(self.visual_encoder_size,
-                              self.visual_encoder_size)
+        if self.model_name == 'resnet18':
+            model = ConvAutoencoder(latent_dim=self.visual_encoder_size,
+                                    input_size=self.input_size,
+                                    gray=self.gray)
+        elif self.model_name == 'conv_autoencoder':
+            model = ResNetCustom(num_classes=self.num_classes,
+                                 latent_dim=self.visual_encoder_size,
+                                 gray=self.gray)
         else:
             raise ValueError("Invalid model name")
 
