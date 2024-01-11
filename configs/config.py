@@ -87,7 +87,7 @@ class Configuration:
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
         self.classifier = ClassifierConfig(**config_data['classifier'])
-        self.memory = ClassifierConfig(**config_data['memory'])
+        self.memory = MemoryConfig(**config_data['memory'])
 
     def write(self, filename):
         filename = Path(filename)
