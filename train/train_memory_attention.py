@@ -102,24 +102,15 @@ def train_memory(config_path, input_path, output_path):
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
+    config.device = device
 
-    if config.autoencoder.architecture_type == 'conv_autoencoder':
-        model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
-                                input_size=config.sampling.target_size,
-                                gray=config.autoencoder.gray)
-
-    elif config.autoencoder.architecture_type == 'resnet18':
-        model = ResNetCustom(num_classes=config.sampling.num_class,
-                             latent_dim=config.autoencoder.latent_dim,
-                             gray=config.autoencoder.gray)
-
-    else:
-        console.quit("Please select correct parameter for architecture_type")
+    model = MA(config, console)
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
     console.info(f"The model has approximately {num_params:.2f} million parameters.")
 
+    # load visual embedding and attention model
     model.to(device)
 
     # test memory usage
@@ -140,10 +131,6 @@ def train_memory(config_path, input_path, output_path):
     optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
     loss_values = []
-
-    # load visual embedding and attention model
-
-    model = MA(config)
 
     # Training loop
     for epoch in range(config.training.num_epoch):

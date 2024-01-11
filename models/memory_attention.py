@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.autoencoder import ConvAutoencoder, ResNetCustom
+from pathlib import Path
 
 
 class MemoryAttentionModule(nn.Module):
@@ -36,11 +37,11 @@ class MemoryAttentionModule(nn.Module):
 
 
 class MA(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, console):
         super(MA, self).__init__()
 
         self.model_name = config.autoencoder.architecture_type
-        self.weights_path = config.memory.path_model
+        self.weights_path = config.memory.visual_embedded_model
         self.visual_encoder_size = config.autoencoder.latent_dim
         self.query_size = config.autoencoder.latent_dim
         self.memory_size = config.autoencoder.latent_dim
@@ -50,9 +51,10 @@ class MA(nn.Module):
         self.k = config.memory.k
         self.input_size = config.sampling.target_size
         self.gray = config.autoencoder.gray
+        self.device = config.device
 
         # Visual encoder
-        self.visual_encoder = self.load_pretrained_visual_encoder()
+        self.visual_encoder = self.load_pretrained_visual_encoder(console)
 
         # Linear layer for classification
         self.classification_layer = nn.Linear(self.query_size, self.num_classes)
@@ -61,7 +63,7 @@ class MA(nn.Module):
         self.memory_attention = MemoryAttentionModule(self.query_size, self.memory_size, self.attention_units,
                                                       self.num_dense_layers)
 
-    def forward(self, visual_input, query_input, memory_keys):
+    def forward(self, query_input, memory_keys):
         # Visual encoding for query
         query_embedding = F.relu(self.visual_encoder(query_input))
 
@@ -79,7 +81,7 @@ class MA(nn.Module):
 
         return output
 
-    def load_pretrained_visual_encoder(self):
+    def load_pretrained_visual_encoder(self, console):
         if self.model_name == 'resnet18':
             model = ConvAutoencoder(latent_dim=self.visual_encoder_size,
                                     input_size=self.input_size,
@@ -89,11 +91,17 @@ class MA(nn.Module):
                                  latent_dim=self.visual_encoder_size,
                                  gray=self.gray)
         else:
-            raise ValueError("Invalid model name")
+            raise ValueError("Invalid visual model name")
 
         # Load pretrained weights
         if self.weights_path is not None:
-            model.load_state_dict(torch.load(self.weights_path))
+            saved_weights = "model_weights_final.pth"
+            training_path = Path(self.weights_path)
+            saved_weights_file = training_path / saved_weights
+
+            console.info("Model loaded from ", saved_weights_file)
+            model.load_state_dict(torch.load(saved_weights_file, map_location=self.device))
+            model.to(self.device)
 
         # Freeze the parameters
         for param in model.parameters():
