@@ -6,7 +6,6 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
-from models.autoencoder import ConvAutoencoder, ResNetCustom
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -104,17 +103,21 @@ def train_memory(config_path, input_path, output_path):
     console.info(f"Running on:  {device}")
     config.device = device
 
+    # load visual embedding and attention model
     model = MA(config, console)
+    model.to(device)
+
+    # load memory keys
+    feature_path = Path(config.memory.visual_embedded_model)
+    feature_filename = feature_path / 'features.feather'
+    df = pd.read_feather(feature_filename)
+    memory_keys_features = df.iloc[:, :-1].values
+    memory_keys_tensor = torch.tensor(memory_keys_features, dtype=torch.float32)
+    memory_keys_tensor = memory_keys_tensor.to(device)
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
     console.info(f"The model has approximately {num_params:.2f} million parameters.")
-
-    # load visual embedding and attention model
-    model.to(device)
-
-    # test memory usage
-    console.info(memory_usage(config, model, device))
 
     # Loss criterion and optimizer
     if config.memory.loss == 'cross_entropy':
@@ -141,7 +144,7 @@ def train_memory(config_path, input_path, output_path):
             images, labels = images.to(device), labels.to(device)
 
             optimizer.zero_grad()
-            outputs = model(images)
+            outputs = model(images, memory_keys_tensor)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
