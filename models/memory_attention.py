@@ -13,26 +13,38 @@ class MemoryAttentionModule(nn.Module):
         self.attention_units = attention_units
         self.num_dense_layers = num_dense_layers
 
-        # Create a sequence of dense layers
-        self.dense_layers = nn.ModuleList([
+        # Dense layers for both queries and memory keys
+        self.dense_layers_query = nn.ModuleList([
             nn.Linear(query_size if i == 0 else attention_units, attention_units)
             for i in range(num_dense_layers)
         ])
 
+        self.dense_layers_memory = nn.ModuleList([
+            nn.Linear(memory_size if i == 0 else attention_units, attention_units)
+            for i in range(num_dense_layers)
+        ])
+
         self.softmax = nn.Softmax(dim=-1)
-        self.normalize = nn.LayerNorm(memory_size)
+        self.normalize = nn.LayerNorm(attention_units)
 
     def forward(self, query, memory_keys):
-        query_transformed = query
 
-        # Apply multiple dense layers
-        for layer in self.dense_layers:
+        batch_size, k, _ = memory_keys.size()
+
+        query_transformed = query
+        for layer in self.dense_layers_query:
             query_transformed = F.relu(layer(query_transformed))
 
-        attention_scores = torch.matmul(query_transformed, memory_keys.transpose(0, 1))
+        memory_keys_transformed = memory_keys
+        for layer in self.dense_layers_memory:
+            memory_keys_transformed = F.relu(layer(memory_keys_transformed))
+
+        query_transformed_expand = query_transformed.unsqueeze(1).expand(-1, k, -1)
+        attention_scores = torch.sum(query_transformed_expand * memory_keys_transformed, dim=-1, keepdim=True)
+
         attention_weights = self.softmax(attention_scores)
-        attended_memory = torch.matmul(attention_weights, memory_keys)
-        output = self.normalize(attended_memory + query)
+        attended_memory = torch.sum(attention_weights * memory_keys_transformed, dim=1)
+        output = self.normalize(attended_memory + query_transformed)
         return output
 
 
@@ -57,7 +69,7 @@ class MA(nn.Module):
         self.visual_encoder = self.load_pretrained_visual_encoder(console)
 
         # Linear layer for classification
-        self.classification_layer = nn.Linear(self.query_size, self.num_classes)
+        self.classification_layer = nn.Linear(self.query_size + self.attention_units, self.num_classes)
 
         # Memory Attention Module
         self.memory_attention = MemoryAttentionModule(self.query_size, self.memory_size, self.attention_units,
@@ -82,14 +94,16 @@ class MA(nn.Module):
         return output
 
     def load_pretrained_visual_encoder(self, console):
-        if self.model_name == 'resnet18':
+        if self.model_name == 'conv_autoencoder':
             model = ConvAutoencoder(latent_dim=self.visual_encoder_size,
                                     input_size=self.input_size,
-                                    gray=self.gray)
-        elif self.model_name == 'conv_autoencoder':
+                                    gray=self.gray,
+                                    encoder_mode=True)
+        elif self.model_name == 'resnet18':
             model = ResNetCustom(num_classes=self.num_classes,
                                  latent_dim=self.visual_encoder_size,
-                                 gray=self.gray)
+                                 gray=self.gray,
+                                 encoder_mode=True)
         else:
             raise ValueError("Invalid visual model name")
 
@@ -110,15 +124,16 @@ class MA(nn.Module):
         return model
 
     @staticmethod
-    def knn_search(query, memory_keys, k):
-        # Calculate cosine similarity between query and memory keys
-        similarity_scores = F.cosine_similarity(query.unsqueeze(0), memory_keys, dim=1)
+    def knn_search(queries, memory_keys, k):
+        # Calculate cosine similarity between queries and memory keys
+        similarity_scores = F.cosine_similarity(queries.unsqueeze(1), memory_keys, dim=2)
 
-        # Get indices of top-k similar memory keys
-        _, indices = torch.topk(similarity_scores, k, dim=0)
+        # Get indices of top-k similar memory keys for each query
+        _, indices = torch.topk(similarity_scores, k, dim=1)
 
-        # Gather the top-k memory keys
-        memory_keys_knn = memory_keys[indices]
+        # Gather the top-k memory keys for each query
+        memory_keys_knn = torch.gather(memory_keys.unsqueeze(0).expand(queries.size(0), -1, -1), 1,
+                                       indices.unsqueeze(2).expand(-1, -1, memory_keys.size(1)))
 
         return memory_keys_knn
 
