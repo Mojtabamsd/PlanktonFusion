@@ -90,12 +90,12 @@ def train_memory(config_path, input_path, output_path):
                                                          num_samples=len(train_dataset),
                                                          replacement=True)
         train_loader = DataLoader(train_dataset,
-                                  batch_size=config.training.batch_size,
+                                  batch_size=config.memory.batch_size,
                                   sampler=sampler)
 
     else:
         train_loader = DataLoader(train_dataset,
-                                  batch_size=config.training.batch_size,
+                                  batch_size=config.memory.batch_size,
                                   shuffle=True)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
