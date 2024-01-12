@@ -6,46 +6,26 @@ from pathlib import Path
 
 
 class MemoryAttentionModule(nn.Module):
-    def __init__(self, query_size, memory_size, attention_units, num_dense_layers=1):
+    def __init__(self, query_size, memory_size, attention_units):
         super(MemoryAttentionModule, self).__init__()
         self.query_size = query_size
         self.memory_size = memory_size
         self.attention_units = attention_units
-        self.num_dense_layers = num_dense_layers
 
-        # Dense layers for both queries and memory keys
-        self.dense_layers_query = nn.ModuleList([
-            nn.Linear(query_size if i == 0 else attention_units, attention_units)
-            for i in range(num_dense_layers)
-        ])
-
-        self.dense_layers_memory = nn.ModuleList([
-            nn.Linear(memory_size if i == 0 else attention_units, attention_units)
-            for i in range(num_dense_layers)
-        ])
-
-        self.softmax = nn.Softmax(dim=-1)
-        self.normalize = nn.LayerNorm(attention_units)
+        self.query_dense = nn.Linear(query_size, attention_units)
+        self.memory_dense = nn.Linear(memory_size, attention_units)
+        self.attention_score_dense = nn.Linear(attention_units, 1)
 
     def forward(self, query, memory_keys):
+        expanded_query = query.unsqueeze(1)
+        attention_scores = self.attention_score_dense(torch.tanh(self.query_dense(expanded_query)
+                                                                 + self.memory_dense(memory_keys)))
 
-        batch_size, k, _ = memory_keys.size()
+        attention_weights = F.softmax(attention_scores, dim=1)
 
-        query_transformed = query
-        for layer in self.dense_layers_query:
-            query_transformed = F.relu(layer(query_transformed))
+        attended_memory = torch.sum(attention_weights * memory_keys, dim=1)
 
-        memory_keys_transformed = memory_keys
-        for layer in self.dense_layers_memory:
-            memory_keys_transformed = F.relu(layer(memory_keys_transformed))
-
-        query_transformed_expand = query_transformed.unsqueeze(1).expand(-1, k, -1)
-        attention_scores = torch.sum(query_transformed_expand * memory_keys_transformed, dim=-1, keepdim=True)
-
-        attention_weights = self.softmax(attention_scores)
-        attended_memory = torch.sum(attention_weights * memory_keys_transformed, dim=1)
-        output = self.normalize(attended_memory + query_transformed)
-        return output
+        return attended_memory
 
 
 class MA(nn.Module):
@@ -68,29 +48,21 @@ class MA(nn.Module):
         # Visual encoder
         self.visual_encoder = self.load_pretrained_visual_encoder(console)
 
-        # Linear layer for classification
-        self.classification_layer = nn.Linear(self.query_size + self.attention_units, self.num_classes)
-
         # Memory Attention Module
-        self.memory_attention = MemoryAttentionModule(self.query_size, self.memory_size, self.attention_units,
-                                                      self.num_dense_layers)
+        self.memory_attention = MemoryAttentionModule(self.query_size, self.memory_size, self.attention_units)
+
+        self.classification_layer = nn.Linear(2 * self.query_size, self.num_classes)
 
     def forward(self, query_input, memory_keys):
-        # Visual encoding for query
         query_embedding = F.relu(self.visual_encoder(query_input))
 
         # k-NN search
         memory_keys_knn = self.knn_search(query_embedding, memory_keys, self.k)
 
-        # Apply Memory Attention Module
         memory_attention_output = self.memory_attention(query_embedding, memory_keys_knn)
-
-        # Concatenate query_embedding and memory_attention_output
         merged_output = torch.cat([query_embedding, memory_attention_output], dim=1)
 
-        # Classification layer
         output = self.classification_layer(merged_output)
-
         return output
 
     def load_pretrained_visual_encoder(self, console):
