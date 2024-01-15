@@ -179,6 +179,10 @@ def train_memory(config_path, input_path, output_path):
 
     console.info(f"Final model weights saved to {saved_weights_file}")
 
+    # # debug
+    # path_model = r'D:\mojmas\files\data\result_sampling\training20240112125540\model_weights_final.pth'
+    # model.load_state_dict(torch.load(path_model, map_location=device))
+
     # Create uvp dataset datasets for training and validation
     if phase == 'train_val':
         console.info('Testing model with validation subset')
@@ -213,7 +217,7 @@ def train_memory(config_path, input_path, output_path):
         for images, labels, _ in val_loader:
             images, labels = images.to(device), labels.to(device)
 
-            outputs = model(images)
+            outputs = model(images, memory_keys_tensor)
             _, preds = torch.max(outputs, 1)
 
             all_labels.extend(labels.cpu().numpy())
