@@ -57,5 +57,6 @@ memory:
   loss: 'cross_entropy' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
   k: 10  #number of k-NN
   batch_size: 128
+  num_epoch: 100
 
 

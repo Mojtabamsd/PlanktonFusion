@@ -136,7 +136,7 @@ def train_memory(config_path, input_path, output_path):
     loss_values = []
 
     # Training loop
-    for epoch in range(config.training.num_epoch):
+    for epoch in range(config.memory.num_epoch):
         model.train()
         running_loss = 0.0
 
