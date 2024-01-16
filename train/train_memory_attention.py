@@ -158,6 +158,7 @@ def train_memory(config_path, input_path, output_path):
         average_loss = running_loss / len(train_loader)
         loss_values.append(average_loss)
         console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
+        plot_loss(loss_values, num_epoch=epoch+1, training_path=config.training_path)
 
         # save intermediate weight
         if (epoch + 1) % config.training.save_model_every_n_epoch == 0:
