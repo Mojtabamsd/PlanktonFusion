@@ -1,5 +1,6 @@
 base:
   cpu: False
+  all_gpu: False
   gpu_index: 0
 
 
@@ -37,7 +38,7 @@ prediction:
 
 autoencoder:
   architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder' or 'resnet18'
-  latent_dim: 16
+  latent_dim: 64
   batch_size: 256
   gray: True
   learning_rate: 0.001
@@ -53,10 +54,10 @@ classifier:
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'
 
 memory:
-  visual_embedded_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231107150305'  #path of embedding model
+  visual_embedded_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240112130643'  #path of embedding model
   loss: 'cross_entropy' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
-  k: 10  #number of k-NN
-  batch_size: 128
+  k: 100  #number of k-NN
+  batch_size: 64
   num_epoch: 100
 
 

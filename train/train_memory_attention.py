@@ -16,6 +16,7 @@ from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomA
 from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss
 from models.memory_attention import MA
+from torch.nn.parallel import DataParallel
 
 
 def train_memory(config_path, input_path, output_path):
@@ -107,6 +108,11 @@ def train_memory(config_path, input_path, output_path):
     model = MA(config, console)
     model.to(device)
 
+    # using all available gpu in parallel
+    if config.base.all_gpu:
+        model = DataParallel(model)
+        model = model.cuda()
+
     # load memory keys
     feature_path = Path(config.memory.visual_embedded_model)
     feature_filename = feature_path / 'features.feather'
@@ -181,7 +187,7 @@ def train_memory(config_path, input_path, output_path):
     console.info(f"Final model weights saved to {saved_weights_file}")
 
     # # debug
-    # path_model = r'D:\mojmas\files\data\result_sampling\training20240112125540\model_weights_final.pth'
+    # path_model = r'D:\mojmas\files\data\result_sampling\training20240116111324\model_weights_final.pth'
     # model.load_state_dict(torch.load(path_model, map_location=device))
 
     # Create uvp dataset datasets for training and validation

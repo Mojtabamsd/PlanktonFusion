@@ -3,8 +3,9 @@ from pathlib import Path
 
 
 class BaseConfig:
-    def __init__(self, cpu=False, gpu_index=0):
+    def __init__(self, cpu=False, all_gpu=False, gpu_index=0):
         self.cpu = cpu
+        self.all_gpu = all_gpu
         self.gpu_index = gpu_index
 
 
