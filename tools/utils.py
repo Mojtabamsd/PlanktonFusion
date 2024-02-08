@@ -7,6 +7,47 @@ import seaborn as sns
 import os
 
 
+def plot_hist(df, out_path_name):
+    # Define threshold for majority/minority
+    threshold = 12000
+
+    # Get class counts and sort in descending order
+    class_counts = df['groundthruth'].value_counts().sort_values(ascending=False)
+    classes = class_counts.index
+
+    # Custom shades of blue and red
+    color_majority = '#3498db'  # blueish
+    color_minority = '#e74c3c'  # redish
+
+    # Assign colors based on the threshold
+    colors = [color_majority if count > threshold else color_minority for count in class_counts]
+
+    # Convert counts to thousands for y-axis labels
+    class_counts_thousands = class_counts / 1000
+
+    # Adjust the bar width and remove any spacing
+    bar_width = 1  # set to 1 for no spacing
+    bar_positions = range(len(classes))
+
+    # Plot histogram
+    plt.figure(figsize=(16, 10))
+    plt.bar(bar_positions, class_counts, width=bar_width, color=colors, align='center')
+
+    # Set x-axis ticks and labels
+    plt.xticks(bar_positions, classes)
+
+    # Set y-axis labels in thousands (k)
+    plt.yticks(ticks=plt.yticks()[0], labels=[f'{int(val/1000)}k' for val in plt.yticks()[0]])
+
+    plt.title('')
+    plt.xlabel('')
+    # plt.ylabel('Count (in thousands)')
+    plt.xticks(rotation=45)
+    # plt.show()
+
+    plt.savefig(out_path_name, dpi=600)
+
+
 def report_to_df(report):
     report = [x.split(" ") for x in report.split("\n")]
     header = ["Class Name"] + [x for x in report[0] if x != ""]
