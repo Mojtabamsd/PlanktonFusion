@@ -37,14 +37,14 @@ prediction:
 
 
 autoencoder:
-  architecture_type: 'conv_autoencoder' # choose 'conv_autoencoder' or 'resnet18'
+  architecture_type: 'resnet18_autoencoder' # choose 'conv_autoencoder' or 'resnet18' or 'resnet18_autoencoder'
   latent_dim: 64
-  batch_size: 256
+  batch_size: 32
   gray: True
   learning_rate: 0.001
   num_epoch: 100
   save_model_every_n_epoch: 20
-  loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse'
+  loss: 'mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse'
 
 
 classifier:

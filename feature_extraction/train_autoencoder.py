@@ -6,7 +6,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
-from models.autoencoder import ConvAutoencoder, ResNetCustom
+from models.autoencoder import ConvAutoencoder, ResNetCustom, ResNetAutoencoder
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -98,6 +98,11 @@ def train_autoencoder(config_path, input_path, output_path):
                              latent_dim=config.autoencoder.latent_dim,
                              gray=config.autoencoder.gray)
 
+    elif config.autoencoder.architecture_type == 'resnet18_autoencoder':
+        model = ResNetAutoencoder(latent_dim=config.autoencoder.latent_dim,
+                                  input_size=config.sampling.target_size,
+                                  gray=config.autoencoder.gray)
+
     else:
         console.quit("Please select correct parameter for architecture_type")
 
@@ -134,7 +139,8 @@ def train_autoencoder(config_path, input_path, output_path):
         for images, labels, _ in train_loader:
             images, labels = images.to(device), labels.to(device)
 
-            if config.autoencoder.architecture_type == 'conv_autoencoder':
+            if config.autoencoder.architecture_type == 'conv_autoencoder' or \
+                    config.autoencoder.architecture_type == 'resnet18_autoencoder':
                 labels = images
 
             optimizer.zero_grad()
