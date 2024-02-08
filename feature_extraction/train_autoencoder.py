@@ -16,6 +16,7 @@ from tools.augmentation import GaussianNoise
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 import numpy as np
 import pandas as pd
+from torch.nn.parallel import DataParallel
 
 
 def train_autoencoder(config_path, input_path, output_path):
@@ -122,6 +123,11 @@ def train_autoencoder(config_path, input_path, output_path):
     console.info(f"The model has approximately {num_params:.2f} million parameters.")
 
     model.to(device)
+
+    # using all available gpu in parallel
+    if config.base.all_gpu:
+        model = DataParallel(model)
+        model = model.cuda()
 
     # test memory usage
     console.info(memory_usage(config, model, device))
