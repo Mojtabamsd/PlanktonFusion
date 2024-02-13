@@ -49,7 +49,7 @@ autoencoder:
 
 classifier:
   path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231106093200'  # if it's not NN write None
-  feature_type: 'conv_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18'
+  feature_type: 'resnet18_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18' or or 'resnet18_autoencoder'
   batch_size: 128
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'
 
