@@ -78,7 +78,9 @@ def classifier(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    if config.classifier.feature_type == 'conv_autoencoder' or config.classifier.feature_type == 'resnet18':
+    if config.classifier.feature_type == 'conv_autoencoder' or\
+            config.classifier.feature_type == 'resnet18' or\
+            config.classifier.feature_type == 'resnet18_autoencoder':
 
         if config.classifier.feature_type == 'conv_autoencoder':
             model = ConvAutoencoder(latent_dim=config.autoencoder.latent_dim,
