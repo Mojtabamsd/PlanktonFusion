@@ -17,6 +17,7 @@ from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomA
 import numpy as np
 import pandas as pd
 from torch.nn.parallel import DataParallel
+from tools.visualization import visualization_output
 
 
 def train_autoencoder(config_path, input_path, output_path):
@@ -47,15 +48,19 @@ def train_autoencoder(config_path, input_path, output_path):
         console.error("The output folder", training_path, "exists.")
         console.quit("Folder exists, not overwriting previous results.")
 
+    visualisation_path = training_path / "visualization"
+    if not visualisation_path.exists():
+        visualisation_path.mkdir(parents=True, exist_ok=True)
+
     # Save configuration file
     output_config_filename = training_path / "config.yaml"
     config.write(output_config_filename)
 
-    # Define data transformations
-    transform = transforms.Compose([
-        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
-        transforms.ToTensor(),
-    ])
+    # # Define data transformations
+    # transform = transforms.Compose([
+    #     transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
+    #     transforms.ToTensor(),
+    # ])
 
     # Define data transformations
     transform = transforms.Compose([
@@ -170,6 +175,9 @@ def train_autoencoder(config_path, input_path, output_path):
 
             console.info(f"Model weights saved to {saved_weights_file}")
             torch.save(model.state_dict(), saved_weights_file)
+
+            visualization_output(images, outputs, visualisation_path,
+                                 epoch, batch_size=config.autoencoder.batch_size, gray=config.autoencoder.gray)
 
     # Create a plot of the loss values
     plot_loss(loss_values, num_epoch=config.autoencoder.num_epoch, training_path=config.training_path)
