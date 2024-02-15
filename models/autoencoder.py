@@ -228,15 +228,15 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.fc = nn.Linear(latent_dim, 512 * 8 * 8)
         self.input_size = input_size
-        self.deconv1 = nn.ConvTranspose2d(1024, 256, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
+        self.deconv1 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(256)
-        self.deconv2 = nn.ConvTranspose2d(512, 128, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
+        self.deconv2 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(128)
-        self.deconv3 = nn.ConvTranspose2d(256, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
+        self.deconv3 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(64)
-        self.deconv4 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=1, padding=0, bias=False)
+        self.deconv4 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=0, bias=False)
         self.bn4 = nn.BatchNorm2d(64)
-        self.deconv5 = nn.ConvTranspose2d(128, input_channels, kernel_size=7, stride=2, padding=3, output_padding=1, bias=False)
+        self.deconv5 = nn.ConvTranspose2d(64, input_channels, kernel_size=7, stride=2, padding=3, output_padding=1, bias=False)
         self.decoder_un_pool = nn.MaxUnpool2d(kernel_size=3, stride=2)
         self.relu = nn.ReLU(inplace=True)
         self.tanh = nn.Tanh()
@@ -244,35 +244,35 @@ class Decoder(nn.Module):
     def forward(self, x0, idx1, x1, x2, x3, x4, x5):
         x = self.fc(x5)
         x = x.view(-1, 512,  8, 8)
-        x = torch.cat((x, x4), dim=1)
+        # x = torch.cat((x, x4), dim=1)
 
         x = self.deconv1(x)
         x = self.bn1(x)
         x = self.relu(x)
 
         x = F.interpolate(x, size=(x3.size(2), x3.size(3)), mode='bilinear', align_corners=False)
-        x = torch.cat((x, x3), dim=1)  # Concatenate with x3
+        # x = torch.cat((x, x3), dim=1)  # Concatenate with x3
 
         x = self.deconv2(x)
         x = self.bn2(x)
         x = self.relu(x)
 
         x = F.interpolate(x, size=(x2.size(2), x2.size(3)), mode='bilinear', align_corners=False)
-        x = torch.cat((x, x2), dim=1)  # Concatenate with x2
+        # x = torch.cat((x, x2), dim=1)  # Concatenate with x2
 
         x = self.deconv3(x)
         x = self.bn3(x)
         x = self.relu(x)
 
         x = F.interpolate(x, size=(x1.size(2), x1.size(3)), mode='bilinear', align_corners=False)
-        x = torch.cat((x, x1), dim=1)  # Concatenate with x1
+        # x = torch.cat((x, x1), dim=1)  # Concatenate with x1
         x = self.deconv4(x)
 
         x = F.interpolate(x, size=(idx1.size(2), idx1.size(3)), mode='bilinear', align_corners=False)
         x = self.decoder_un_pool(x, idx1)
 
         x = F.interpolate(x, size=(x0.size(2), x0.size(3)), mode='bilinear', align_corners=False)
-        x = torch.cat((x, x0), dim=1)  # Concatenate with x1
+        # x = torch.cat((x, x0), dim=1)  # Concatenate with x1
         x = self.deconv5(x)
 
         x = self.tanh(x)

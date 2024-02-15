@@ -28,6 +28,8 @@ def train_autoencoder(config_path, input_path, output_path):
     input_folder = Path(input_path)
     output_folder = Path(output_path)
 
+    input_folder = input_folder / "train"
+
     console = Console(output_folder)
     console.info("Training started ...")
 
@@ -167,6 +169,11 @@ def train_autoencoder(config_path, input_path, output_path):
         console.info(f"Epoch [{epoch + 1}/{config.autoencoder.num_epoch}] - Loss: {average_loss:.4f}")
         plot_loss(loss_values, num_epoch=epoch + 1, training_path=config.training_path)
 
+        # visualize every 5 epoch
+        if (epoch + 1) % 5 == 0:
+            visualization_output(images, outputs, visualisation_path,
+                                 epoch, batch_size=config.autoencoder.batch_size, gray=config.autoencoder.gray)
+
         # save intermediate weight
         if (epoch + 1) % config.autoencoder.save_model_every_n_epoch == 0:
             # Save the model weights
@@ -175,9 +182,6 @@ def train_autoencoder(config_path, input_path, output_path):
 
             console.info(f"Model weights saved to {saved_weights_file}")
             torch.save(model.state_dict(), saved_weights_file)
-
-            visualization_output(images, outputs, visualisation_path,
-                                 epoch, batch_size=config.autoencoder.batch_size, gray=config.autoencoder.gray)
 
     # Create a plot of the loss values
     plot_loss(loss_values, num_epoch=config.autoencoder.num_epoch, training_path=config.training_path)
