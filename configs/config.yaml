@@ -44,7 +44,7 @@ autoencoder:
   learning_rate: 0.001
   num_epoch: 100
   save_model_every_n_epoch: 20
-  loss: 'mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse'
+  loss: 'w_mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile'
 
 
 classifier:

@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tools.utils import plot_loss, memory_usage
-from models.loss import FocalLoss, WeightedCrossEntropyLoss
+from models.loss import FocalLoss, WeightedCrossEntropyLoss, QuantileLoss, WeightedMSELoss
 from tools.augmentation import GaussianNoise
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 import numpy as np
@@ -124,6 +124,11 @@ def train_autoencoder(config_path, input_path, output_path):
         criterion = FocalLoss(alpha=1, gamma=2)
     elif config.autoencoder.loss == 'mse':
         criterion = nn.MSELoss()
+    elif config.autoencoder.loss == 'w_mse':
+        class_weights_tensor = class_weights_tensor.to(device)
+        criterion = WeightedMSELoss(weight=class_weights_tensor)
+    elif config.autoencoder.loss == 'quantile':
+        criterion = QuantileLoss(quantile=0.5)
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
@@ -154,11 +159,15 @@ def train_autoencoder(config_path, input_path, output_path):
 
             if config.autoencoder.architecture_type == 'conv_autoencoder' or \
                     config.autoencoder.architecture_type == 'resnet18_autoencoder':
+                labels_ = labels.clone()
                 labels = images
 
             optimizer.zero_grad()
             outputs, _ = model(images)
-            loss = criterion(outputs, labels)
+            if config.autoencoder.loss == 'w_mse':
+                loss = criterion(outputs, labels, labels_)
+            else:
+                loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 

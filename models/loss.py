@@ -64,3 +64,32 @@ class LogitAdjustmentLoss(nn.Module):
 
         return loss
 
+
+class QuantileLoss(nn.Module):
+    def __init__(self, quantile=0.5):
+        super(QuantileLoss, self).__init__()
+        self.quantile = quantile
+
+    def forward(self, preds, targets):
+        errors = targets - preds
+        quantile_loss = torch.max((self.quantile - 1) * errors, self.quantile * errors)
+        return torch.mean(quantile_loss)
+
+
+class WeightedMSELoss(nn.Module):
+    def __init__(self, weight=None, reduction='mean'):
+        super(WeightedMSELoss, self).__init__()
+        self.weight = weight
+        self.reduction = reduction
+
+    def forward(self, inputs, targets, label):
+        mse_loss = nn.MSELoss()(inputs, targets)
+        weighted_mse_loss = mse_loss * self.weight[label]
+
+        # Apply reduction if specified
+        if self.reduction == 'mean':
+            weighted_mse_loss = torch.mean(weighted_mse_loss)
+        elif self.reduction == 'sum':
+            weighted_mse_loss = torch.sum(weighted_mse_loss)
+
+        return weighted_mse_loss
