@@ -237,7 +237,8 @@ class Decoder(nn.Module):
         self.deconv4 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=0, bias=False)
         self.bn4 = nn.BatchNorm2d(64)
         self.deconv5 = nn.ConvTranspose2d(64, input_channels, kernel_size=7, stride=2, padding=3, output_padding=1, bias=False)
-        self.decoder_un_pool = nn.MaxUnpool2d(kernel_size=3, stride=2)
+        # self.decoder_un_pool = nn.MaxUnpool2d(kernel_size=3, stride=2)
+        self.deconv4_un_pool = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
         self.relu = nn.ReLU(inplace=True)
         self.tanh = nn.Tanh()
 
@@ -269,7 +270,8 @@ class Decoder(nn.Module):
         x = self.deconv4(x)
 
         x = F.interpolate(x, size=(idx1.size(2), idx1.size(3)), mode='bilinear', align_corners=False)
-        x = self.decoder_un_pool(x, idx1)
+        # x = self.decoder_un_pool(x, idx1)
+        x = self.deconv4_un_pool(x)
 
         x = F.interpolate(x, size=(x0.size(2), x0.size(3)), mode='bilinear', align_corners=False)
         # x = torch.cat((x, x0), dim=1)  # Concatenate with x1
