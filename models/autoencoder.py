@@ -188,9 +188,17 @@ class Encoder(nn.Module):
         self.layer3 = self._make_layer(128, 256, 2, stride=2)
         self.layer4 = self._make_layer(256, 512, 2, stride=2)
 
+        self.avg_pool = nn.AdaptiveAvgPool2d((8, 8))
+
         self.latent_dim = latent_dim
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(512*8*8, latent_dim)
+        # self.fc = nn.Linear(512*8*8, latent_dim)
+        self.fc = nn.Sequential(
+            nn.Linear(512*8*8, latent_dim),
+            nn.BatchNorm1d(latent_dim),
+            nn.ReLU(inplace=True),
+
+        )
 
     def _make_layer(self, in_channels, out_channels, blocks, stride=1):
         layers = []
@@ -217,6 +225,8 @@ class Encoder(nn.Module):
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
 
+        x4 = self.avg_pool(x4)
+
         x5 = self.flatten(x4)
         x5 = self.fc(x5)
 
@@ -226,7 +236,11 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, latent_dim=16, input_channels=1, input_size=(227, 227)):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(latent_dim, 512 * 8 * 8)
+        # self.fc = nn.Linear(latent_dim, 512 * 8 * 8)
+        self.fc = nn.Sequential(
+            nn.Linear(latent_dim, 512 * 8 * 8),
+            nn.BatchNorm1d(512 * 8 * 8),
+            nn.ReLU(inplace=True),)
         self.input_size = input_size
         self.deconv1 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(256)

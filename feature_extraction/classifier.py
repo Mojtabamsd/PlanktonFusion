@@ -258,6 +258,7 @@ def train_classifier(model, dataloader, config, device, console):
                 feature_values = np.array([feature_value for feature_value in feature.values()])
                 latent_vectors.append(feature_values)
             all_labels.append(labels.data.cpu().detach().numpy())
+            print('batch ' + str(index) + '     out of:     ' + str(dataloader.__len__()))
 
         all_labels = np.concatenate(all_labels).ravel()
     else:
@@ -269,6 +270,7 @@ def train_classifier(model, dataloader, config, device, console):
 
                 latent_vectors.extend(latent.cpu().numpy())
                 all_labels.append(labels.data.cpu().detach().numpy())
+                print('batch ' + str(index) + '     out of:     ' + str(dataloader.__len__()))
 
             all_labels = np.concatenate(all_labels).ravel()
 
@@ -280,7 +282,7 @@ def train_classifier(model, dataloader, config, device, console):
 
     if config.classifier.classifier_type == 'svm':
         # Train SVM classifier
-        svm_classifier = SVC(kernel='rbf', class_weight='balanced')
+        svm_classifier = SVC(kernel='rbf', class_weight='balanced', verbose=False)
         svm_classifier.fit(x_train, y_train)
 
         return svm_classifier
@@ -295,6 +297,13 @@ def train_classifier(model, dataloader, config, device, console):
         # sample_weights = np.array([class_weights[label] for label in y_train])
         # xg_classifier = xgb.XGBClassifier()
         # xg_classifier.fit(x_train, y_train, sample_weight=sample_weights)
+
+        # # weighted sampling
+        # from sklearn.utils.class_weight import compute_class_weight
+        # class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+        # class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
+        # xg_classifier = xgb.XGBClassifier(class_weight=class_weight_dict)
+        # xg_classifier.fit(x_train, y_train)
 
         # # LOV setting
         # num_class = 13
