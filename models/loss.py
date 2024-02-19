@@ -96,20 +96,24 @@ class WeightedMSELoss(nn.Module):
         return weighted_mse_loss
 
 
-class PerceptualLoss(nn.Module):
-    def __init__(self, config, device):
-        super(PerceptualLoss, self).__init__()
+class PerceptualReconstructionLoss(nn.Module):
+    def __init__(self, config, device, alpha=0.2, beta=0.8):
+        super(PerceptualReconstructionLoss, self).__init__()
         self.resnet = ResNetCustom(num_classes=config.sampling.num_class,
                                    latent_dim=config.autoencoder.latent_dim,
                                    gray=config.autoencoder.gray,
                                    pretrained=True)
         self.resnet.to(device)
         self.criterion = nn.MSELoss()
+        self.alpha = alpha
+        self.beta = beta
 
     def forward(self, generated, ground_truth):
         # Extract features from ResNet18
         _, gen_features = self.resnet(generated)
         _, gt_features = self.resnet(ground_truth)
 
-        loss = self.criterion(gen_features, gt_features)
-        return loss
+        perceptual_loss = self.criterion(gen_features, gt_features)
+        reconstruction_loss = self.criterion(generated, ground_truth)
+
+        return self.alpha * perceptual_loss + self.beta * reconstruction_loss
