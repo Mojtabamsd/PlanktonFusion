@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from models.autoencoder import ResNetCustom
 
 
 class WeightedCrossEntropyLoss(nn.Module):
@@ -93,3 +94,22 @@ class WeightedMSELoss(nn.Module):
             weighted_mse_loss = torch.sum(weighted_mse_loss)
 
         return weighted_mse_loss
+
+
+class PerceptualLoss(nn.Module):
+    def __init__(self, config, device):
+        super(PerceptualLoss, self).__init__()
+        self.resnet = ResNetCustom(num_classes=config.sampling.num_class,
+                                   latent_dim=config.autoencoder.latent_dim,
+                                   gray=config.autoencoder.gray,
+                                   pretrained=True)
+        self.resnet.to(device)
+        self.criterion = nn.MSELoss()
+
+    def forward(self, generated, ground_truth):
+        # Extract features from ResNet18
+        _, gen_features = self.resnet(generated)
+        _, gt_features = self.resnet(ground_truth)
+
+        loss = self.criterion(gen_features, gt_features)
+        return loss

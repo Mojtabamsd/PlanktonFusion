@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tools.utils import plot_loss, memory_usage
-from models.loss import FocalLoss, WeightedCrossEntropyLoss, QuantileLoss, WeightedMSELoss
+from models.loss import FocalLoss, WeightedCrossEntropyLoss, QuantileLoss, WeightedMSELoss, PerceptualLoss
 from tools.augmentation import GaussianNoise
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
 import numpy as np
@@ -129,6 +129,8 @@ def train_autoencoder(config_path, input_path, output_path):
         criterion = WeightedMSELoss(weight=class_weights_tensor)
     elif config.autoencoder.loss == 'quantile':
         criterion = QuantileLoss(quantile=0.5)
+    elif config.autoencoder.loss == 'perceptual':
+        criterion = PerceptualLoss(config, device)
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
