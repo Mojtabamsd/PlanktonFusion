@@ -44,13 +44,13 @@ autoencoder:
   learning_rate: 0.001
   num_epoch: 100
   save_model_every_n_epoch: 20
-  loss: 'w_mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile'
+  loss: 'perceptual' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile' or 'perceptual'
 
 
 classifier:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231106093200'  # if it's not NN write None
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240216151441'  # if it's not NN write None
   feature_type: 'resnet18_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18' or or 'resnet18_autoencoder'
-  batch_size: 128
+  batch_size: 192
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'
 
 memory:
