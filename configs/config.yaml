@@ -44,7 +44,19 @@ autoencoder:
   learning_rate: 0.001
   num_epoch: 100
   save_model_every_n_epoch: 20
-  loss: 'per_rec' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile' or 'per_rec'
+  loss: 'mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile' or 'per_rec'
+
+
+ssl:
+  architecture_type: 'simclr' # choose 'simclr'
+  temperature: 0.07
+  latent_dim: 64
+  batch_size: 32
+  gray: True
+  learning_rate: 0.0001
+  num_epoch: 100
+  save_model_every_n_epoch: 20
+  loss: 'cross_entropy' # choose 'cross_entropy'
 
 
 classifier:

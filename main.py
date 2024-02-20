@@ -6,6 +6,7 @@ from data_preparation.sampling import sampling
 from train.train import train_nn
 from inference.prediction import prediction
 from feature_extraction.train_autoencoder import train_autoencoder
+from feature_extraction.ssl import train_ssl
 from feature_extraction.classifier import classifier
 from train.train_memory_attention import train_memory
 
@@ -67,6 +68,13 @@ def main(args=None):
     add_arguments(parser_autoencoder)
     parser_autoencoder.set_defaults(func=call_autoencoder)
 
+    # ssl
+    parser_ssl = subparsers.add_parser(
+        "ssl", help="Train an ssl"
+    )
+    add_arguments(parser_ssl)
+    parser_ssl.set_defaults(func=call_ssl)
+
     # classifier
     parser_classifier = subparsers.add_parser(
         "classifier", help="Train a classifier from features"
@@ -103,6 +111,10 @@ def call_prediction(args):
 
 def call_autoencoder(args):
     train_autoencoder(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_ssl(args):
+    train_ssl(args.configuration_file, args.input_folder, args.output_folder)
 
 
 def call_classifier(args):

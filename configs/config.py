@@ -60,6 +60,20 @@ class AutoencoderConfig:
         self.loss = loss
 
 
+class SSLConfig:
+    def __init__(self, architecture_type, temperature, latent_dim, batch_size, gray, learning_rate, num_epoch,
+                 save_model_every_n_epoch, loss):
+        self.architecture_type = architecture_type
+        self.temperature = temperature
+        self.latent_dim = latent_dim
+        self.batch_size = batch_size
+        self.gray = gray
+        self.learning_rate = learning_rate
+        self.num_epoch = num_epoch
+        self.save_model_every_n_epoch = save_model_every_n_epoch
+        self.loss = loss
+
+
 class ClassifierConfig:
     def __init__(self, path_model, batch_size, feature_type, classifier_type):
         self.path_model = path_model
@@ -89,6 +103,7 @@ class Configuration:
         self.training = TrainingConfig(**config_data['training'])
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
+        self.ssl = SSLConfig(**config_data['ssl'])
         self.classifier = ClassifierConfig(**config_data['classifier'])
         self.memory = MemoryConfig(**config_data['memory'])
 
