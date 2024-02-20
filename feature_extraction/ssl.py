@@ -75,10 +75,6 @@ def train_ssl(config_path, input_path, output_path):
         console.error("The output folder", training_path, "exists.")
         console.quit("Folder exists, not overwriting previous results.")
 
-    visualisation_path = training_path / "visualization"
-    if not visualisation_path.exists():
-        visualisation_path.mkdir(parents=True, exist_ok=True)
-
     # Save configuration file
     output_config_filename = training_path / "config.yaml"
     config.write(output_config_filename)
