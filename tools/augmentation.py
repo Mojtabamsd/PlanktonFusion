@@ -36,6 +36,7 @@ class RandomZoomOut:
         img = resized_crop(img, 0, 0, new_height, new_width, (height, width))
         return img
 
+
 class GaussianNoise:
     def __init__(self, std=0.1):
         self.std = std

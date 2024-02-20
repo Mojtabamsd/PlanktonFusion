@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.optim as optim
 from tools.utils import plot_loss
 from tools.augmentation import GaussianNoise
-from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
+from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop
 import numpy as np
 import pandas as pd
 from torch.nn.parallel import DataParallel
@@ -102,7 +102,7 @@ def train_ssl(config_path, input_path, output_path):
 
     # Create data loaders
     train_loader = DataLoader(train_dataset,
-                              batch_size=config.autoencoder.batch_size,
+                              batch_size=config.ssl.batch_size,
                               shuffle=True)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
@@ -139,9 +139,9 @@ def train_ssl(config_path, input_path, output_path):
 
     loss_values = []
     transforms_to_apply = [
+        RandomResizedCrop((config.sampling.target_size[0], config.sampling.target_size[1])),
         RandomHorizontalFlip(),
         RandomRotation(degrees=15),
-        RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
     ]
 
     # Training loop
@@ -169,9 +169,11 @@ def train_ssl(config_path, input_path, output_path):
             logits = torch.matmul(representations, representations.T) / model.temperature
 
             # # Discard diagonals and normalize scores
-            # mask = torch.eye(len(representations), device=device)
-            # logits = logits - mask * 1e2
-            targets = torch.arange(len(representations), device=device)
+            mask = torch.eye(len(representations), device=device)
+            logits = logits - mask * 1e5
+
+            targets = torch.arange(len(representations) // 2, device=device)
+            targets = torch.cat([targets, targets], dim=0)
 
             optimizer.zero_grad()
             loss = criterion(logits, targets)
