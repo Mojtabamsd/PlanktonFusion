@@ -35,6 +35,13 @@ prediction:
   path_model: 'D:\mojmas\files\data\result_sampling\training20231123092750'
   batch_size: 2
 
+prediction_auto:
+  path_model_auto: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240219162906'
+  path_model_class: 'D:\mojmas\files\data\result_sampling\training20231123092750'
+  architecture_type1: 'resnet18_autoencoder' # choose autoencoder path 'conv_autoencoder' or 'resnet18_autoencoder'
+  architecture_type2: 'resnet18' # choose classification model path 'resnet18'
+  latent_dim: 64
+  batch_size: 192
 
 autoencoder:
   architecture_type: 'resnet18_autoencoder' # choose 'conv_autoencoder' or 'resnet18' or 'resnet18_autoencoder'
@@ -50,8 +57,8 @@ autoencoder:
 ssl:
   architecture_type: 'simclr' # choose 'simclr'
   temperature: 0.07
-  latent_dim: 64
-  batch_size: 32
+  latent_dim: 16
+  batch_size: 64
   gray: True
   learning_rate: 0.001
   num_epoch: 100
@@ -60,7 +67,7 @@ ssl:
 
 
 classifier:
-  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240216151441'  # if it's not NN write None
+  path_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240219162906'  # if it's not NN write None
   feature_type: 'resnet18_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18' or or 'resnet18_autoencoder'
   batch_size: 192
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'

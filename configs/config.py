@@ -47,6 +47,17 @@ class PredictionConfig:
         self.batch_size = batch_size
 
 
+class PredictionAutoConfig:
+    def __init__(self, path_model_auto, path_model_class, architecture_type1, architecture_type2,
+                 latent_dim, batch_size):
+        self.path_model_auto = path_model_auto
+        self.path_model_class = path_model_class
+        self.architecture_type1 = architecture_type1
+        self.architecture_type2 = architecture_type2
+        self.latent_dim = latent_dim
+        self.batch_size = batch_size
+
+
 class AutoencoderConfig:
     def __init__(self, architecture_type, latent_dim, batch_size, gray, learning_rate, num_epoch,
                  save_model_every_n_epoch, loss):
@@ -102,6 +113,7 @@ class Configuration:
         self.sampling = SamplingConfig(**config_data['sampling'])
         self.training = TrainingConfig(**config_data['training'])
         self.prediction = PredictionConfig(**config_data['prediction'])
+        self.prediction_auto = PredictionAutoConfig(**config_data['prediction_auto'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
         self.ssl = SSLConfig(**config_data['ssl'])
         self.classifier = ClassifierConfig(**config_data['classifier'])

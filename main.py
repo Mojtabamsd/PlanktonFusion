@@ -5,6 +5,7 @@ from tools import console
 from data_preparation.sampling import sampling
 from train.train import train_nn
 from inference.prediction import prediction
+from inference.prediction_auto import prediction_auto
 from feature_extraction.train_autoencoder import train_autoencoder
 from feature_extraction.ssl import train_ssl
 from feature_extraction.classifier import classifier
@@ -61,6 +62,13 @@ def main(args=None):
     add_arguments(parser_prediction)
     parser_prediction.set_defaults(func=call_prediction)
 
+    # prediction autoencoder
+    parser_prediction_auto = subparsers.add_parser(
+        "prediction_auto", help="Prediction from autoencoder reconstruction model"
+    )
+    add_arguments(parser_prediction_auto)
+    parser_prediction_auto.set_defaults(func=call_prediction_auto)
+
     # autoencoder
     parser_autoencoder = subparsers.add_parser(
         "autoencoder", help="Train an Autoencoder"
@@ -107,6 +115,10 @@ def call_training(args):
 
 def call_prediction(args):
     prediction(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_prediction_auto(args):
+    prediction_auto(args.configuration_file, args.input_folder, args.output_folder)
 
 
 def call_autoencoder(args):
