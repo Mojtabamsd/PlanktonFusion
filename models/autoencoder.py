@@ -197,7 +197,7 @@ class Encoder(nn.Module):
             nn.Linear(512*8*8, latent_dim),
             nn.BatchNorm1d(latent_dim),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5)
+            # nn.Dropout(0.5)
         )
 
     def _make_layer(self, in_channels, out_channels, blocks, stride=1):
