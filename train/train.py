@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
 from models.classifier_vit import ViT, ViTPretrained
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -46,15 +47,19 @@ def train_nn(config_path, input_path, output_path):
         console.info("Label not provided for testing")
         input_csv_test = None
 
-    time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    rel_training_path = Path("training" + time_str)
-    training_path = output_folder / rel_training_path
-    config.training_path = training_path
-    if not training_path.exists():
-        training_path.mkdir(exist_ok=True, parents=True)
-    elif training_path.exists():
-        console.error("The output folder", training_path, "exists.")
-        console.quit("Folder exists, not overwriting previous results.")
+    if config.training.path_pretrain:
+        training_path = Path(config.training.path_pretrain)
+        config.training_path = training_path
+    else:
+        time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        rel_training_path = Path("training" + time_str)
+        training_path = output_folder / rel_training_path
+        config.training_path = training_path
+        if not training_path.exists():
+            training_path.mkdir(exist_ok=True, parents=True)
+        elif training_path.exists():
+            console.error("The output folder", training_path, "exists.")
+            console.quit("Folder exists, not overwriting previous results.")
 
     # Save configuration file
     output_config_filename = training_path / "config.yaml"
@@ -142,6 +147,21 @@ def train_nn(config_path, input_path, output_path):
     # test memory usage
     console.info(memory_usage(config, model, device))
 
+    if config.training.path_pretrain:
+        pth_files = [file for file in os.listdir(training_path) if
+                     file.endswith('.pth') and file != 'model_weights_final.pth']
+        epochs = [int(file.split('_')[-1].split('.')[0]) for file in pth_files]
+        latest_epoch = max(epochs)
+        latest_pth_file = f"model_weights_epoch_{latest_epoch}.pth"
+
+        saved_weights_file = training_path / latest_pth_file
+
+        console.info("Model loaded from ", saved_weights_file)
+        model.load_state_dict(torch.load(saved_weights_file, map_location=device))
+        model.to(device)
+    else:
+        latest_epoch = 0
+
     # Loss criterion and optimizer
     if config.training.loss == 'cross_entropy':
         criterion = nn.CrossEntropyLoss()
@@ -159,7 +179,7 @@ def train_nn(config_path, input_path, output_path):
     loss_values = []
 
     # Training loop
-    for epoch in range(config.training.num_epoch):
+    for epoch in range(latest_epoch, config.training.num_epoch):
         model.train()
         running_loss = 0.0
 
@@ -181,7 +201,7 @@ def train_nn(config_path, input_path, output_path):
         average_loss = running_loss / len(train_loader)
         loss_values.append(average_loss)
         console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
-        plot_loss(loss_values, num_epoch=epoch + 1, training_path=config.training_path)
+        plot_loss(loss_values, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path)
 
         # save intermediate weight
         if (epoch + 1) % config.training.save_model_every_n_epoch == 0:
@@ -193,7 +213,7 @@ def train_nn(config_path, input_path, output_path):
             torch.save(model.state_dict(), saved_weights_file)
 
     # Create a plot of the loss values
-    plot_loss(loss_values, num_epoch=config.training.num_epoch, training_path=config.training_path)
+    plot_loss(loss_values, num_epoch=(config.training.num_epoch - latest_epoch), training_path=config.training_path)
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"

@@ -120,7 +120,7 @@ def predict(model1, model2, dataloader, prediction_path, device):
         for index, (images, labels, img_names) in enumerate(dataloader):
             images = images.to(device)
             reconstructed, _ = model1(images)
-            outputs = model2(images)
+            outputs = model2(reconstructed)
             _, predicted_labels = torch.max(outputs, 1)
 
             all_labels.append(labels.data.cpu().detach().numpy())
