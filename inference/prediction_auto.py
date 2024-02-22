@@ -132,7 +132,8 @@ def predict(model1, model2, dataloader, prediction_path, device):
                 int_label = predicted_labels[i].item()
                 string_label = dataloader.dataset.get_string_label(int_label)
                 image_name = img_names[i]
-                image_path = os.path.join(prediction_path, 'output', string_label, image_name.replace('output/', ''))
+                # image_path = os.path.join(prediction_path, 'output', string_label, image_name.replace('output/', ''))
+                image_path = os.path.join(prediction_path, 'output', image_name.replace('output/', ''))
 
                 if not os.path.exists(os.path.dirname(image_path)):
                     os.makedirs(os.path.dirname(image_path))

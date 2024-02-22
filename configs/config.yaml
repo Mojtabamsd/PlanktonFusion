@@ -37,7 +37,7 @@ prediction:
   batch_size: 2
 
 prediction_auto:
-  path_model_auto: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240216151700'
+  path_model_auto: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240219162906'
   path_model_class: 'D:\mojmas\files\data\result_sampling\training20231123092750'
   architecture_type1: 'resnet18_autoencoder' # choose autoencoder path 'conv_autoencoder' or 'resnet18_autoencoder'
   architecture_type2: 'resnet18' # choose classification model path 'resnet18'
