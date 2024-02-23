@@ -73,8 +73,6 @@ def prediction_auto(config_path, input_path, output_path):
                               input_size=config.sampling.target_size,
                               gray=config.training.gray)
 
-
-
     else:
         console.quit("Please select correct parameter for architecture_type2")
 
@@ -106,10 +104,10 @@ def prediction_auto(config_path, input_path, output_path):
 
     dataloader = DataLoader(test_dataset, batch_size=config.prediction_auto.batch_size, shuffle=False)
 
-    predict(model1, model2, dataloader, prediction_path, device)
+    predict(model1, model2, dataloader, prediction_path, transform, device)
 
 
-def predict(model1, model2, dataloader, prediction_path, device):
+def predict(model1, model2, dataloader, prediction_path, transform, device):
     model1.eval()
     model2.eval()
 
@@ -120,6 +118,11 @@ def predict(model1, model2, dataloader, prediction_path, device):
         for index, (images, labels, img_names) in enumerate(dataloader):
             images = images.to(device)
             reconstructed, _ = model1(images)
+
+            # reconstructed_images = [transforms.ToPILImage()(img) for img in reconstructed]
+            # transformed_output = torch.stack([transform(img) for img in reconstructed_images])
+            # transformed_output = transformed_output.to(device)
+
             outputs = model2(reconstructed)
             _, predicted_labels = torch.max(outputs, 1)
 
@@ -139,7 +142,9 @@ def predict(model1, model2, dataloader, prediction_path, device):
                     os.makedirs(os.path.dirname(image_path))
 
                 # input_path = os.path.join(dataloader.dataset.root_dir, image_name)
-                pil_image = transforms.ToPILImage()(reconstructed[i, :])
+                image = reconstructed[i, :]
+                image_norm = (image - image.min()) / (image.max() - image.min())
+                pil_image = transforms.ToPILImage()(image_norm)
                 pil_image.save(image_path)
 
         all_labels = np.concatenate(all_labels).ravel()
