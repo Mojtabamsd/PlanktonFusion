@@ -103,7 +103,7 @@ def plot_f1_scores(out_path_name, model_names, *dataframes):
 
     # Set up the bar plot using seaborn
     plt.figure(figsize=(16, 10))
-    ax = sns.barplot(x="Class Name", y="f1-score", hue="level_0", data=combined_report.reset_index())
+    ax = sns.barplot(x="Class Name", y="f1-score", hue="level_0", data=combined_report.reset_index(), width=0.35)
 
     # Rotate x-axis labels by 90 degrees
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
@@ -118,6 +118,45 @@ def plot_f1_scores(out_path_name, model_names, *dataframes):
     plt.tight_layout()
     # plt.show()
 
+    plt.savefig(out_path_name, dpi=600)
+
+
+def plot_f1_scores_diff(out_path_name, model_names, *dataframes):
+
+    combined_report = pd.concat(dataframes, keys=model_names)
+    combined_report = combined_report[combined_report["Class Name"] != "accuracy"]
+
+    # Calculate improvement in F1-score
+    base_model_scores = combined_report.loc["Base Model", "f1-score"]
+    model1_scores = combined_report.loc["Model1", "f1-score"]
+    model2_scores = combined_report.loc["Model2", "f1-score"]
+
+    diff_model1 = model1_scores - base_model_scores
+    diff_model2 = model2_scores - base_model_scores
+
+    diff_df = pd.DataFrame({
+        "Class Name": combined_report.reset_index()["Class Name"].unique(),
+        "diff_Model1": diff_model1.values,
+        "diff_Model2": diff_model2.values
+    })
+
+    diff_df = pd.melt(diff_df, id_vars=["Class Name"], var_name="Model", value_name="diff")
+
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(12, 6))
+
+    ax = sns.barplot(x="Class Name", y="diff", hue="Model", data=diff_df, width=0.35)
+
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+
+    # Customize the plot
+    plt.xlabel('')
+    plt.ylabel('difference in f1-score')
+
+    plt.ylim(-max(abs(diff_df["diff"])), max(abs(diff_df["diff"])))
+
+    # Show the plot
+    plt.tight_layout()
     plt.savefig(out_path_name, dpi=600)
 
 
