@@ -36,6 +36,7 @@ prediction:
   path_model: 'D:\mojmas\files\data\result_sampling\training20231123092750'
   batch_size: 2
 
+
 prediction_auto:
   path_model_auto: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240219162906'
   path_model_class: 'D:\mojmas\files\data\result_sampling\training20231123092750'
@@ -43,6 +44,7 @@ prediction_auto:
   architecture_type2: 'resnet18' # choose classification model path 'resnet18'
   latent_dim: 64
   batch_size: 192
+
 
 autoencoder:
   architecture_type: 'resnet18_autoencoder' # choose 'conv_autoencoder' or 'resnet18' or 'resnet18_autoencoder'
@@ -53,6 +55,7 @@ autoencoder:
   num_epoch: 100
   save_model_every_n_epoch: 20
   loss: 'mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile' or 'per_rec'
+  path_pretrain: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231207125558' # if False training from scratch
 
 
 ssl:
@@ -72,6 +75,7 @@ classifier:
   feature_type: 'resnet18_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18' or or 'resnet18_autoencoder'
   batch_size: 192
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'
+
 
 memory:
   visual_embedded_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240112130643'  #path of embedding model

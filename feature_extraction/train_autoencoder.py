@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
 from models.autoencoder import ConvAutoencoder, ResNetCustom, ResNetAutoencoder
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -40,15 +41,19 @@ def train_autoencoder(config_path, input_path, output_path):
         console.error("The input csv file", input_csv, "does not exist.")
         console.quit("Input csv file does not exist.")
 
-    time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    rel_training_path = Path("autoencoder_training" + time_str)
-    training_path = output_folder / rel_training_path
-    config.training_path = training_path
-    if not training_path.exists():
-        training_path.mkdir(exist_ok=True, parents=True)
-    elif training_path.exists():
-        console.error("The output folder", training_path, "exists.")
-        console.quit("Folder exists, not overwriting previous results.")
+    if config.autoencoder.path_pretrain:
+        training_path = Path(config.autoencoder.path_pretrain)
+        config.training_path = training_path
+    else:
+        time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        rel_training_path = Path("autoencoder_training" + time_str)
+        training_path = output_folder / rel_training_path
+        config.training_path = training_path
+        if not training_path.exists():
+            training_path.mkdir(exist_ok=True, parents=True)
+        elif training_path.exists():
+            console.error("The output folder", training_path, "exists.")
+            console.quit("Folder exists, not overwriting previous results.")
 
     visualisation_path = training_path / "visualization"
     if not visualisation_path.exists():
@@ -114,6 +119,21 @@ def train_autoencoder(config_path, input_path, output_path):
     else:
         console.quit("Please select correct parameter for architecture_type")
 
+    if config.autoencoder.path_pretrain:
+        pth_files = [file for file in os.listdir(training_path) if
+                     file.endswith('.pth') and file != 'model_weights_final.pth']
+        epochs = [int(file.split('_')[-1].split('.')[0]) for file in pth_files]
+        latest_epoch = max(epochs)
+        latest_pth_file = f"model_weights_epoch_{latest_epoch}.pth"
+
+        saved_weights_file = training_path / latest_pth_file
+
+        console.info("Model loaded from ", saved_weights_file)
+        model.load_state_dict(torch.load(saved_weights_file, map_location=device))
+        model.to(device)
+    else:
+        latest_epoch = 0
+
     # Loss criterion and optimizer
     if config.autoencoder.loss == 'cross_entropy':
         criterion = nn.CrossEntropyLoss()
@@ -152,7 +172,8 @@ def train_autoencoder(config_path, input_path, output_path):
     loss_values = []
 
     # Training loop
-    for epoch in range(config.autoencoder.num_epoch):
+    for epoch in range(latest_epoch, config.autoencoder.num_epoch):
+
         model.train()
         running_loss = 0.0
 
@@ -178,7 +199,7 @@ def train_autoencoder(config_path, input_path, output_path):
         average_loss = running_loss / len(train_loader)
         loss_values.append(average_loss)
         console.info(f"Epoch [{epoch + 1}/{config.autoencoder.num_epoch}] - Loss: {average_loss:.4f}")
-        plot_loss(loss_values, num_epoch=epoch + 1, training_path=config.training_path)
+        plot_loss(loss_values, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path)
 
         # visualize every 5 epoch
         if (epoch + 1) % 5 == 0:
@@ -195,7 +216,7 @@ def train_autoencoder(config_path, input_path, output_path):
             torch.save(model.state_dict(), saved_weights_file)
 
     # Create a plot of the loss values
-    plot_loss(loss_values, num_epoch=config.autoencoder.num_epoch, training_path=config.training_path)
+    plot_loss(loss_values, num_epoch=(config.autoencoder.num_epoch - latest_epoch), training_path=config.training_path)
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"
@@ -222,6 +243,11 @@ def train_autoencoder(config_path, input_path, output_path):
             _, latent = model(images)
 
             latent_vectors.extend(latent.cpu().numpy())
+
+            # # for visualize the tsne of whole image
+            # latent_vectors.extend(np.reshape(images.cpu().numpy(),
+            #                                  (images.shape[0],images.shape[1]*images.shape[2]*images.shape[3])))
+
             all_labels.append(labels.data.cpu().detach().numpy())
 
     all_labels = np.concatenate(all_labels).ravel()

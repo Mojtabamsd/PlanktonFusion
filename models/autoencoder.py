@@ -117,6 +117,20 @@ class ConvAutoencoder(nn.Module):
         x = x.view(x.size(0), -1)  # Flatten for linear transformation
         latent = self.linear_en(x)
 
+        # # compute storage
+        # import lzma
+        # import numpy as np
+        # latent_np = latent.cpu().data.numpy()
+        # idx1_np = idx_mp_1.cpu().data.numpy().astype('int32')
+        # idx2_np = idx_mp_2.cpu().data.numpy().astype('int32')
+        #
+        # compressed0 = lzma.compress(latent_np[0].tobytes())
+        # compressed1 = lzma.compress(idx1_np[0].tobytes())
+        # compressed2 = lzma.compress(idx2_np[0].tobytes())
+        #
+        # path = r'D:\mojmas\files\data\result_sampling\results\compress_file'
+        # np.savez_compressed(path, x=compressed0, idx1=compressed1, idx2=compressed2)
+
         if self.encoder_mode:
             return latent
 
@@ -161,7 +175,7 @@ class ResNetCustom(nn.Module):
         self.latent_layer = nn.Linear(resnet.fc.in_features, latent_dim)
 
         # Add a new classification head
-        self.classification_head = nn.Linear(latent_dim, num_classes)
+        self.classification_head = nn.Linear(resnet.fc.in_features, num_classes)
 
     def forward(self, x):
         features = self.features(x)
@@ -171,7 +185,7 @@ class ResNetCustom(nn.Module):
         if self.encoder_mode:
             return latent_output
 
-        classification_output = self.classification_head(latent_output)
+        classification_output = self.classification_head(features)
         return classification_output, latent_output
 
 

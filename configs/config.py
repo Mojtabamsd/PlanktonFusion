@@ -61,7 +61,7 @@ class PredictionAutoConfig:
 
 class AutoencoderConfig:
     def __init__(self, architecture_type, latent_dim, batch_size, gray, learning_rate, num_epoch,
-                 save_model_every_n_epoch, loss):
+                 save_model_every_n_epoch, loss, path_pretrain):
         self.architecture_type = architecture_type
         self.latent_dim = latent_dim
         self.batch_size = batch_size
@@ -70,6 +70,7 @@ class AutoencoderConfig:
         self.num_epoch = num_epoch
         self.save_model_every_n_epoch = save_model_every_n_epoch
         self.loss = loss
+        self.path_pretrain = path_pretrain
 
 
 class SSLConfig:
