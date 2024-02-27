@@ -29,6 +29,22 @@ class SamplingConfig:
         self.create_folder = create_folder
 
 
+class SamplingSynConfig:
+    def __init__(self, path_syn, uvp_type, path_uvp6, path_uvp6_csv, path_output, sampling_method,
+                 sampling_percent_uvp6, target_size, test_dataset_sampling, test_percent_uvp6, create_folder):
+        self.path_syn = path_syn
+        self.uvp_type = uvp_type
+        self.path_uvp6 = path_uvp6
+        self.path_uvp6_csv = path_uvp6_csv
+        self.path_output = path_output
+        self.sampling_method = sampling_method
+        self.sampling_percent_uvp6 = sampling_percent_uvp6
+        self.target_size = target_size
+        self.test_dataset_sampling = test_dataset_sampling
+        self.test_percent_uvp6 = test_percent_uvp6
+        self.create_folder = create_folder
+
+
 class TrainingConfig:
     def __init__(self, architecture_type, batch_size, gray, learning_rate, num_epoch,
                  save_model_every_n_epoch, loss, path_pretrain):
@@ -113,6 +129,7 @@ class Configuration:
         self.output_path = output_path
         self.base = BaseConfig(**config_data['base'])
         self.sampling = SamplingConfig(**config_data['sampling'])
+        self.sampling_syn = SamplingSynConfig(**config_data['sampling_syn'])
         self.training = TrainingConfig(**config_data['training'])
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.prediction_auto = PredictionAutoConfig(**config_data['prediction_auto'])

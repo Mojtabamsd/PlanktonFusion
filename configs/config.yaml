@@ -21,6 +21,20 @@ sampling:
   create_folder: False  # if True it will create sub-folders with class naming
 
 
+sampling_syn:
+  path_syn: 'D:\mojmas\files\Projects\WP14\data\UVP_images'
+  uvp_type: 'UVP6'          # choose 'UVP6'
+  path_uvp6: 'D:\mojmas\files\data\UVP6Net'
+  path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
+  path_output: 'D:\mojmas\files\data\result_sampling'
+  sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
+  sampling_percent_uvp6: 0.9
+  target_size: [227, 227]  #image target size
+  test_dataset_sampling: 'stratified' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
+  test_percent_uvp6: 0.1
+  create_folder: False  # if True it will create sub-folders with class naming
+
+
 training:
   architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
   batch_size: 32
@@ -47,14 +61,14 @@ prediction_auto:
 
 
 autoencoder:
-  architecture_type: 'resnet18_autoencoder' # choose 'conv_autoencoder' or 'resnet18' or 'resnet18_autoencoder'
-  latent_dim: 64
+  architecture_type: 'resnet18' # choose 'conv_autoencoder' or 'resnet18' or 'resnet18_autoencoder'
+  latent_dim: 55
   batch_size: 32
   gray: True
   learning_rate: 0.001
   num_epoch: 100
   save_model_every_n_epoch: 20
-  loss: 'mse' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile' or 'per_rec'
+  loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'mse' or or 'w_mse', quantile' or 'per_rec'
   path_pretrain: 'D:\mojmas\files\data\result_sampling\autoencoder_training20231207125558' # if False training from scratch
 
 

@@ -3,6 +3,7 @@ import os
 import sys
 from tools import console
 from data_preparation.sampling import sampling
+from data_preparation.sampling_syn import sampling_syn
 from train.train import train_nn
 from inference.prediction import prediction
 from inference.prediction_auto import prediction_auto
@@ -47,6 +48,14 @@ def main(args=None):
     )
     add_arguments(parser_sampling)
     parser_sampling.set_defaults(func=call_sampling)
+
+    # sampling synthetic
+    parser_sampling_syn = subparsers.add_parser(
+        "sampling_syn",
+        help="Prepare real and synthetic dataset ready for training.",
+    )
+    add_arguments(parser_sampling_syn)
+    parser_sampling_syn.set_defaults(func=call_sampling_syn)
 
     # training
     parser_training = subparsers.add_parser(
@@ -107,6 +116,10 @@ def main(args=None):
 
 def call_sampling(args):
     sampling(args.configuration_file)
+
+
+def call_sampling_syn(args):
+    sampling_syn(args.configuration_file)
 
 
 def call_training(args):

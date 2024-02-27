@@ -244,7 +244,7 @@ def copy_image_from_df(df, out_dir, target_size=None, cutting_ruler=False, inver
         resized_image.save(target_path)
 
 
-def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None):
+def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None, syn=False):
     # report
     if df1 is None:
         res2 = df2.groupby(['label']).size()
@@ -271,15 +271,47 @@ def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None):
         res2 = df2.groupby(['label']).size()
         res2_sample = df2_sample.groupby(['label']).size()
 
-    series1 = pd.Series(res1, name='uvp5')
-    series2 = pd.Series(res1_sample, name='uvp5_sample')
+    if syn:
+        series1 = pd.Series(res1, name='syn')
+        series2 = pd.Series(res1_sample, name='syn_sample')
+    else:
+        series1 = pd.Series(res1, name='uvp5')
+        series2 = pd.Series(res1_sample, name='uvp5_sample')
     series3 = pd.Series(res2, name='uvp6_sample')
     series4 = pd.Series(res2_sample, name='uvp6_sample')
 
     # Merge the two Series based on their index
     merged_series = pd.merge(series1, series2, left_index=True, right_index=True)
-    merged_series = pd.merge(merged_series, series3, left_index=True, right_index=True)
-    merged_series = pd.merge(merged_series, series4, left_index=True, right_index=True)
+    merged_series = pd.merge(merged_series, series3, left_index=True, right_index=True, how='outer')
+    merged_series = pd.merge(merged_series, series4, left_index=True, right_index=True, how='outer')
 
     csv_report_path = sampling_path / ("report.csv")
     merged_series.to_csv(csv_report_path)
+
+
+def create_dataframe_from_folder(folder_path):
+    data = {'label': [], 'path': [], 'relative_path': []}
+
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            label = os.path.basename(root)
+            file_path = os.path.join(root, file)
+
+            relative_path = os.path.relpath(file_path, folder_path)
+            relative_path = 'output/' + os.path.basename(relative_path)
+
+            # Append data to the dictionary
+            data['label'].append(label)
+            data['path'].append(file_path)
+            data['relative_path'].append(relative_path)
+
+    df = pd.DataFrame(data)
+    df['uvp_model'] = ['SYN'] * len(df)
+    df['object_id'] = ['NaN'] * len(df)
+    df['profile_id'] = ['NaN'] * len(df)
+    df['depth'] = ['NaN'] * len(df)
+    df['lat'] = ['NaN'] * len(df)
+    df['lon'] = ['NaN'] * len(df)
+    df['datetime'] = ['NaN'] * len(df)
+    df['pixel_size'] = ['NaN'] * len(df)
+    return df
