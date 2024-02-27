@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 from torch.nn.parallel import DataParallel
 from tools.visualization import visualization_output
+from tools.visualization import tsne_plot
 
 
 def train_autoencoder(config_path, input_path, output_path):
@@ -257,6 +258,9 @@ def train_autoencoder(config_path, input_path, output_path):
 
     report_filename = training_path / 'features.feather'
     df.to_feather(report_filename)
+
+    # tsne plot
+    tsne_plot(latent_vectors, all_labels, int_to_label, visualisation_path)
 
 
 
