@@ -94,15 +94,15 @@ def sampling_syn(config_path):
 
     # Loop through the image paths and copy the images to the target directory
     if df1_sample is not None:
-        copy_image_from_df(df1_sample, sampling_path_images_train, config.sampling_syn.target_size,
-                           cutting_ruler=True, invert_img=True)
+        df1_sample = copy_image_from_df(df1_sample, sampling_path_images_train, config.sampling_syn.target_size,
+                                        cutting_ruler=True, invert_img=True)
 
     if df2_sample is not None:
-        copy_image_from_df(df2_sample, sampling_path_images_train, config.sampling_syn.target_size,
-                           cutting_ruler=False, invert_img=True)
+        df2_sample = copy_image_from_df(df2_sample, sampling_path_images_train, config.sampling_syn.target_size,
+                                        cutting_ruler=False, invert_img=True)
 
-        copy_image_from_df(df2_sample_test, sampling_path_images_test, config.sampling_syn.target_size,
-                           cutting_ruler=False, invert_img=True)
+        df2_sample_test = copy_image_from_df(df2_sample_test, sampling_path_images_test, config.sampling_syn.target_size,
+                                             cutting_ruler=False, invert_img=True)
 
     # merge two dataframe for train
     df_train = pd.concat([df1_sample, df2_sample])

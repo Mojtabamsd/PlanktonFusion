@@ -77,6 +77,12 @@ def sampling(config_path):
         # # to exclude of taxon
         # df1 = df1[df1['label'] != 'detritus']
 
+        # # get only 10% of detritus class
+        # detritus_df = df1[df1['label'] == 'detritus']
+        # sampled_detritus_df = detritus_df.sample(frac=0.1, random_state=42)
+        # other_df = df1[df1['label'] != 'detritus']
+        # df1 = pd.concat([sampled_detritus_df, other_df])
+
         if config.sampling.test_dataset_sampling == 'fixed':
             df1_sample_test, df1_train = sampling_fixed_number_test(df1, config.sampling.test_percent_uvp5)
         elif config.sampling.test_dataset_sampling == 'uniform':
@@ -149,18 +155,18 @@ def sampling(config_path):
 
     # Loop through the image paths and copy the images to the target directory
     if df1_sample is not None:
-        copy_image_from_df(df1_sample, sampling_path_images_train, config.sampling.target_size,
-                           cutting_ruler=True, invert_img=True)
+        df1_sample = copy_image_from_df(df1_sample, sampling_path_images_train, config.sampling.target_size,
+                                        cutting_ruler=True, invert_img=True)
 
-        copy_image_from_df(df1_sample_test, sampling_path_images_test, config.sampling.target_size,
-                           cutting_ruler=True, invert_img=True)
+        df1_sample_test = copy_image_from_df(df1_sample_test, sampling_path_images_test, config.sampling.target_size,
+                                             cutting_ruler=True, invert_img=True)
 
     if df2_sample is not None:
-        copy_image_from_df(df2_sample, sampling_path_images_train, config.sampling.target_size,
-                           cutting_ruler=False, invert_img=True)
+        df2_sample = copy_image_from_df(df2_sample, sampling_path_images_train, config.sampling.target_size,
+                                        cutting_ruler=False, invert_img=True)
 
-        copy_image_from_df(df2_sample_test, sampling_path_images_test, config.sampling.target_size,
-                           cutting_ruler=False, invert_img=True)
+        df2_sample_test = copy_image_from_df(df2_sample_test, sampling_path_images_test, config.sampling.target_size,
+                                             cutting_ruler=False, invert_img=True)
 
     # merge two dataframe for train
     df_train = pd.concat([df1_sample, df2_sample])

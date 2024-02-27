@@ -143,7 +143,7 @@ def load_uvp5(path):
     df['object_id'] = df['object_id'].astype(int)
     df['path'] = path + '\\images\\' + df['profile_id'].astype(str) + '\\' + df['object_id'].astype(str) + '.jpg'
     df['relative_path'] = 'output\\' + df['object_id'].astype(str) + '.jpg'
-    df['relative_path'] = df['relative_path'].str.replace(r'\\', '/')
+    df['relative_path'] = df['relative_path'].str.replace(r'\s*\\+\s*', '/', regex=True)
 
     return df
 
@@ -209,8 +209,12 @@ def copy_image_from_df(df, out_dir, target_size=None, cutting_ruler=False, inver
     if target_size is None:
         target_size = [227, 227]
 
+    rows_to_drop = []
     for index, row in tqdm(df.iterrows()):
         image_path = row['path']
+        if not os.path.exists(image_path):
+            rows_to_drop.append(index)  # Store index of row to drop
+            continue
         # image_filename = os.path.basename(image_path)
         image_filename = row['relative_path']
         image_filename = image_filename.replace('output/', '', 1)
@@ -242,6 +246,9 @@ def copy_image_from_df(df, out_dir, target_size=None, cutting_ruler=False, inver
         # resize image
         resized_image = inverted_img.resize((target_size[0], target_size[1]), resample=Image.Resampling.LANCZOS)
         resized_image.save(target_path)
+
+    df.drop(rows_to_drop, inplace=True)
+    return df
 
 
 def report_csv(df1, df1_sample, df2, df2_sample, sampling_path=None, syn=False):
