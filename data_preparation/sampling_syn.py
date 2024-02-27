@@ -46,9 +46,8 @@ def sampling_syn(config_path):
         console.error("Please select correct parameter for which_uvp")
         sys.exit()
 
-    labels_included = ['Amphipoda', 'Aulacanthidae', 'Calanidae']
     if df2 is not None:
-        df2 = df2[df2['label'].isin(labels_included)]
+        df2 = df2[df2['label'].isin(config.sampling_syn.labels_included)]
         if config.sampling_syn.create_folder:
             df2['relative_path'] = df2.apply(lambda row: f"output/{row['label']}/"
                                              f"{row['relative_path'].split('/')[1]}", axis=1)

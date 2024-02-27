@@ -30,12 +30,13 @@ class SamplingConfig:
 
 
 class SamplingSynConfig:
-    def __init__(self, path_syn, uvp_type, path_uvp6, path_uvp6_csv, path_output, sampling_method,
+    def __init__(self, path_syn, uvp_type, path_uvp6, path_uvp6_csv, path_output, labels_included, sampling_method,
                  sampling_percent_uvp6, target_size, test_dataset_sampling, test_percent_uvp6, create_folder):
         self.path_syn = path_syn
         self.uvp_type = uvp_type
         self.path_uvp6 = path_uvp6
         self.path_uvp6_csv = path_uvp6_csv
+        self.labels_included = labels_included
         self.path_output = path_output
         self.sampling_method = sampling_method
         self.sampling_percent_uvp6 = sampling_percent_uvp6
