@@ -3,8 +3,8 @@ from torch import zeros
 import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-import umap.umap_ as umap
+# from sklearn.decomposition import PCA
+# import umap.umap_ as umap
 
 
 def visualization_output(img_org, outputs, visualisation_path, epoch, batch_size=32, gray=True):
