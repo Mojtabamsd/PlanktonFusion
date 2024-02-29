@@ -39,6 +39,9 @@ def train_nn(config_path, input_path, output_path):
     input_csv_train = input_folder_train / sampled_images_csv_filename
     input_csv_test = input_folder_test / sampled_images_csv_filename
 
+    config.input_csv_train = str(input_csv_train)
+    config.input_csv_test = str(input_csv_test)
+
     if not input_csv_train.is_file():
         console.info("Label not provided for training")
         input_csv_train = None
