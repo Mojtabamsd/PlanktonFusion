@@ -15,20 +15,31 @@ class SimpleCNN(nn.Module):
 
         self.features = nn.Sequential(
             nn.Conv2d(self.input_channels, 16, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
+            # nn.BatchNorm2d(16),
+            # nn.ReLU(inplace=True),
+            nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             nn.Conv2d(16, 32, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
+            # nn.BatchNorm2d(32),
+            # nn.ReLU(inplace=True),
+            nn.LeakyReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            # # nn.BatchNorm2d(64),
+            # # nn.ReLU(inplace=True),
+            # nn.LeakyReLU(inplace=True),
+            # nn.MaxPool2d(kernel_size=2, stride=2),
         )
         # Calculate the final flattened feature size based on input size
         self.final_feature_size = self.calculate_final_feature_size()
 
         self.classifier = nn.Sequential(
             nn.Linear(32 * self.final_feature_size * self.final_feature_size, 128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(),
+            # nn.ReLU(inplace=True),
+            nn.LeakyReLU(inplace=True),
+            nn.Dropout(0.3),
             nn.Linear(128, num_classes)
         )
 
@@ -49,7 +60,7 @@ class SimpleCNN(nn.Module):
 
 
 class ResNetCustom(nn.Module):
-    def __init__(self, num_classes=13, input_size=(227, 227), gray=False, pretrained=None):
+    def __init__(self, num_classes=13, input_size=(227, 227), gray=False, pretrained=None, freeze_layers=False):
         super(ResNetCustom, self).__init__()
 
         if gray:
@@ -67,12 +78,21 @@ class ResNetCustom(nn.Module):
         # Modify the final classification layer to match your output size
         in_features = self.resnet.fc.in_features
         self.resnet.fc = nn.Sequential(
+            # nn.Dropout(0.5), #TODO
             nn.Linear(in_features, num_classes)
         )
 
         # Adjust the first convolutional layer to accept the specified number of channels
         self.resnet.conv1 = nn.Conv2d(input_channels, 64, kernel_size=(7, 7),
                                       stride=(2, 2), padding=(3, 3), bias=False)
+
+        if freeze_layers:
+            # Freeze or fine-tune specific layers
+            for name, param in self.resnet.named_parameters():
+                if 'fc' in name or 'layer4' in name:
+                    param.requires_grad = True  # Fine-tune these layers
+                else:
+                    param.requires_grad = False  # Freeze all other layers
 
     def forward(self, x):
         return self.resnet(x)

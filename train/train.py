@@ -14,10 +14,10 @@ import torch.optim as optim
 from tools.utils import report_to_df, plot_loss, memory_usage
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
-from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop
+from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
+    ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
 from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss
-
 
 def train_nn(config_path, input_path, output_path):
 
@@ -76,6 +76,10 @@ def train_nn(config_path, input_path, output_path):
         RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
         GaussianNoise(std=0.1),
         RandomResizedCrop((config.sampling.target_size[0], config.sampling.target_size[1])),
+        ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+        RandomGrayscale(p=0.1),
+        RandomPerspective(distortion_scale=0.2, p=0.5),
+        RandomVerticalFlip(p=0.1),
         transforms.ToTensor(),
     ])
 
@@ -120,7 +124,8 @@ def train_nn(config_path, input_path, output_path):
         model = ResNetCustom(num_classes=config.sampling.num_class,
                              input_size=config.sampling.target_size,
                              gray=config.training.gray,
-                             pretrained=config.training.pre_train)
+                             pretrained=config.training.pre_train,
+                             freeze_layers=False)
 
     elif config.training.architecture_type == 'mobilenet':
         model = MobileNetCustom(num_classes=config.sampling.num_class,
