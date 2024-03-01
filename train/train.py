@@ -14,7 +14,7 @@ import torch.optim as optim
 from tools.utils import report_to_df, plot_loss, memory_usage
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
-from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine
+from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop
 from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss
 
@@ -72,9 +72,10 @@ def train_nn(config_path, input_path, output_path):
     transform = transforms.Compose([
         transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
         RandomHorizontalFlip(),
-        RandomRotation(degrees=15),
+        RandomRotation(degrees=30),
         RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
         GaussianNoise(std=0.1),
+        RandomResizedCrop((config.sampling.target_size[0], config.sampling.target_size[1])),
         transforms.ToTensor(),
     ])
 
@@ -186,25 +187,30 @@ def train_nn(config_path, input_path, output_path):
     for epoch in range(latest_epoch, config.training.num_epoch):
         model.train()
         running_loss = 0.0
+        running_corrects = 0
 
         for batch_idx, (images, labels, _) in enumerate(train_loader):
             images, labels = images.to(device), labels.to(device)
 
             optimizer.zero_grad()
             outputs = model(images)
+            _, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
+            running_corrects += torch.sum(preds == labels.data)
 
             # # for debug
             # from tools.image import save_img
             # save_img(images, batch_idx, epoch, training_path/"augmented")
 
         average_loss = running_loss / len(train_loader)
+        average_acc = running_corrects.double() / len(train_loader.dataset)
         loss_values.append(average_loss)
-        console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
+        console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f} "
+                     f"- Training Acc: {average_acc:.4f}")
         plot_loss(loss_values, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path)
 
         # Update the learning rate
