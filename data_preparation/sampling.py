@@ -82,6 +82,12 @@ def sampling(config_path):
         # sampled_detritus_df = detritus_df.sample(frac=0.1, random_state=42)
         # other_df = df1[df1['label'] != 'detritus']
         # df1 = pd.concat([sampled_detritus_df, other_df])
+        #
+        # # get only 30% of artefact class
+        # artefact_df = df1[df1['label'] == 'artefact']
+        # sampled_artefact_df = artefact_df.sample(frac=0.3, random_state=42)
+        # other_df = df1[df1['label'] != 'artefact']
+        # df1 = pd.concat([sampled_artefact_df, other_df])
 
         if config.sampling.test_dataset_sampling == 'fixed':
             df1_sample_test, df1_train = sampling_fixed_number_test(df1, config.sampling.test_percent_uvp5)
