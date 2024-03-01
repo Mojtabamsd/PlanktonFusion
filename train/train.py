@@ -118,7 +118,8 @@ def train_nn(config_path, input_path, output_path):
     elif config.training.architecture_type == 'resnet18':
         model = ResNetCustom(num_classes=config.sampling.num_class,
                              input_size=config.sampling.target_size,
-                             gray=config.training.gray)
+                             gray=config.training.gray,
+                             pretrained=config.training.pre_train)
 
     elif config.training.architecture_type == 'mobilenet':
         model = MobileNetCustom(num_classes=config.sampling.num_class,
@@ -205,6 +206,11 @@ def train_nn(config_path, input_path, output_path):
         loss_values.append(average_loss)
         console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f}")
         plot_loss(loss_values, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path)
+
+        # Update the learning rate
+        if (epoch - latest_epoch) > 50 and loss_values[-1] > loss_values[-2]:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= 0.5
 
         # save intermediate weight
         if (epoch + 1) % config.training.save_model_every_n_epoch == 0:

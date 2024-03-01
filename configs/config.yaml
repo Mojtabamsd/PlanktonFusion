@@ -10,7 +10,7 @@ sampling:
   path_uvp6: 'D:\mojmas\files\data\UVP6Net'
   path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
   path_output: 'D:\mojmas\files\data\result_sampling'
-  num_class: 3             # choose 13 or 23 classes
+  num_class: 5             # choose 13 or 23 classes
   sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp5: 0.9
   sampling_percent_uvp6: 0.9
@@ -26,7 +26,7 @@ sampling_syn:
   uvp_type: 'UVP6'          # choose 'UVP6'
   path_uvp6: 'D:\mojmas\files\data\UVP6Net'
   path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
-  labels_included: ['Amphipoda', 'Aulacanthidae', 'Calanidae']
+  labels_included: ['Amphipoda', 'Aulacanthidae', 'Calanidae', 'Annelida', 'Ostracoda']
   path_output: 'D:\mojmas\files\data\result_sampling'
   sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp6: 0.9
@@ -38,9 +38,10 @@ sampling_syn:
 
 training:
   architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
-  batch_size: 32
+  batch_size: 128
   gray: True
-  learning_rate: 0.001
+  pre_train: True # True or None
+  learning_rate: 0.0001
   num_epoch: 1
   save_model_every_n_epoch: 20
   loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
