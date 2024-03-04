@@ -8,6 +8,7 @@ from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
 from models.classifier_vit import ViT, ViTPretrained
 import os
+import shutil
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -274,7 +275,7 @@ def train_nn(config_path, input_path, output_path):
     all_preds = []
 
     with torch.no_grad():
-        for images, labels, _ in val_loader:
+        for images, labels, img_names in val_loader:
             images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
@@ -282,6 +283,20 @@ def train_nn(config_path, input_path, output_path):
 
             all_labels.extend(labels.cpu().numpy())
             all_preds.extend(preds.cpu().numpy())
+
+            save_image = False
+            if save_image:
+                for i in range(len(preds)):
+                    int_label = preds[i].item()
+                    string_label = val_loader.dataset.get_string_label(int_label)
+                    image_name = img_names[i]
+                    image_path = os.path.join(training_path, 'output/', string_label, image_name.replace('output/', ''))
+
+                    if not os.path.exists(os.path.dirname(image_path)):
+                        os.makedirs(os.path.dirname(image_path))
+
+                    input_path = os.path.join(val_loader.dataset.root_dir, image_name)
+                    shutil.copy(input_path, image_path)
 
     report = classification_report(
         all_labels,
