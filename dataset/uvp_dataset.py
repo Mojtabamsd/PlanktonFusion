@@ -8,12 +8,15 @@ from sklearn.model_selection import train_test_split
 
 
 class UvpDataset(Dataset):
-    def __init__(self, root_dir, num_class, csv_file=None, transform=None, phase='train'):
+    def __init__(self, root_dir, num_class, csv_file=None, transform=None, phase='train', permitted_formats=None):
         self.root_dir = os.path.join(root_dir, 'output')
+        if not os.path.exists(self.root_dir):
+            self.root_dir = root_dir
         self.num_class = num_class
         self.csv_file = csv_file
         self.transform = transform
         self.phase = phase
+        self.permitted_formats = permitted_formats
 
         if self.csv_file:
             self.data_frame = pd.read_csv(csv_file)
@@ -37,7 +40,7 @@ class UvpDataset(Dataset):
         elif self.csv_file:
             return len(self.data_frame)
         else:
-            return len(os.listdir(self.root_dir))
+            return len([filename for filename in os.listdir(self.root_dir) if self.is_permitted_format(filename)])
 
     def __getitem__(self, idx):
         if self.csv_file and self.phase == 'val':
@@ -62,7 +65,8 @@ class UvpDataset(Dataset):
             image = self.load_image(img_path)
             return image, int_label, img_name
         else:
-            img_name = os.path.basename(os.listdir(self.root_dir)[idx])
+            filenames = [filename for filename in os.listdir(self.root_dir) if self.is_permitted_format(filename)]
+            img_name = filenames[idx]
             img_path = os.path.join(self.root_dir, img_name)
             image = self.load_image(img_path)
             return image, '', img_name
@@ -72,6 +76,12 @@ class UvpDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         return image
+
+    def is_permitted_format(self, filename):
+        if self.permitted_formats is None:
+            return True
+        _, ext = os.path.splitext(filename)
+        return ext.lower() in self.permitted_formats
 
     def get_string_label(self, int_label):
         if self.label_to_int is not None:

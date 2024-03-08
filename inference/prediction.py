@@ -106,12 +106,14 @@ def prediction(config_path, input_path, output_path):
     model.load_state_dict(torch.load(saved_weights_file, map_location=device))
     model.to(device)
 
+    permitted_formats = ['.bmp', '.jpeg', '.png']
     test_dataset = UvpDataset(root_dir=input_folder,
                               num_class=config.sampling.num_class,
                               # csv_file=None,
                               csv_file=input_csv,
                               transform=transform,
-                              phase='test')
+                              phase='test',
+                              permitted_formats=permitted_formats)
 
     dataloader = DataLoader(test_dataset, batch_size=config.prediction.batch_size, shuffle=False)
 
@@ -130,7 +132,8 @@ def predict(model, dataloader, prediction_path, device):
             outputs = model(images)
             _, predicted_labels = torch.max(outputs, 1)
 
-            all_labels.append(labels.data.cpu().detach().numpy())
+            if dataloader.dataset.csv_file:
+                all_labels.append(labels.data.cpu().detach().numpy())
             all_preds.append(predicted_labels.cpu().detach().numpy())
 
             for i in range(len(predicted_labels)):
@@ -145,28 +148,29 @@ def predict(model, dataloader, prediction_path, device):
                 input_path = os.path.join(dataloader.dataset.root_dir, image_name)
                 shutil.copy(input_path, image_path)
 
-        all_labels = np.concatenate(all_labels).ravel()
-        all_preds = np.concatenate(all_preds).ravel()
+        if dataloader.dataset.csv_file:
+            all_labels = np.concatenate(all_labels).ravel()
+            all_preds = np.concatenate(all_preds).ravel()
 
-        report = classification_report(
-            all_labels,
-            all_preds,
-            target_names=dataloader.dataset.label_to_int,
-            digits=6,
-        )
+            report = classification_report(
+                all_labels,
+                all_preds,
+                target_names=dataloader.dataset.label_to_int,
+                digits=6,
+            )
 
-        conf_mtx = confusion_matrix(
-            all_labels,
-            all_preds,
-        )
+            conf_mtx = confusion_matrix(
+                all_labels,
+                all_preds,
+            )
 
-        df = report_to_df(report)
-        report_filename = os.path.join(prediction_path, 'report.csv')
-        df.to_csv(report_filename)
+            df = report_to_df(report)
+            report_filename = os.path.join(prediction_path, 'report.csv')
+            df.to_csv(report_filename)
 
-        df = pd.DataFrame(conf_mtx)
-        conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
-        df.to_csv(conf_mtx_filename)
+            df = pd.DataFrame(conf_mtx)
+            conf_mtx_filename = os.path.join(prediction_path, 'conf_matrix.csv')
+            df.to_csv(conf_mtx_filename)
 
     model.train()
 
