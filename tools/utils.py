@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import psutil
 import seaborn as sns
-import os
+import os, time
 
 
 def report_to_df(report):
@@ -184,7 +184,7 @@ def plot_f1_scores_diff(out_path_name, model_names, *dataframes):
 def memory_usage(config, model, device):
 
     # Create a dummy input tensor
-    x = torch.randn((2, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
+    x = torch.randn((1, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
     x = x.to(device)
     normalized_x = (x - x.min()) / (x.max() - x.min())
 
@@ -195,13 +195,31 @@ def memory_usage(config, model, device):
         _ = model(normalized_x)
         gpu_memory_after = torch.cuda.memory_allocated(device=device)
         gpu_memory_used = gpu_memory_after - gpu_memory_before
+        gpu_memory_used_rounded = round(gpu_memory_used / (1024 * 1024), 2)
 
-        return f"GPU Memory Used (MB): {gpu_memory_used / (1024 * 1024)}"
+        return f"GPU memory used per image (MB): {gpu_memory_used_rounded}"
     else:
         # Measure CPU memory usage
         cpu_memory_before = psutil.virtual_memory().used
         _ = model(normalized_x)
         cpu_memory_after = psutil.virtual_memory().used
         cpu_memory_used = cpu_memory_after - cpu_memory_before
+        cpu_memory_used_rounded = round(cpu_memory_used / (1024 * 1024), 2)
 
-        return f"CPU Memory Used (MB): {cpu_memory_used / (1024 * 1024)}"
+        return f"CPU memory used per image (MB): {cpu_memory_used_rounded}"
+
+
+def processing_time(config, model, device):
+
+    # Create a dummy input tensor
+    x = torch.randn((1, 1, config.sampling.target_size[0], config.sampling.target_size[1]))
+    x = x.to(device)
+    normalized_x = (x - x.min()) / (x.max() - x.min())
+
+    # Measure processing time
+    start_time = time.time()
+    _ = model(normalized_x)
+    end_time = time.time()
+    processing_time_seconds = end_time - start_time
+
+    return f"Processing time per image (seconds): {processing_time_seconds:.2f}"
