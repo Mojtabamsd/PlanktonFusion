@@ -6,11 +6,8 @@ from data_preparation.sampling import sampling
 from data_preparation.sampling_syn import sampling_syn
 from train.train import train_nn
 from inference.prediction import prediction
-from inference.prediction_auto import prediction_auto
 from feature_extraction.train_autoencoder import train_autoencoder
-from feature_extraction.ssl import train_ssl
 from feature_extraction.classifier import classifier
-from train.train_memory_attention import train_memory
 
 
 def add_arguments(obj):
@@ -71,13 +68,6 @@ def main(args=None):
     add_arguments(parser_prediction)
     parser_prediction.set_defaults(func=call_prediction)
 
-    # prediction autoencoder
-    parser_prediction_auto = subparsers.add_parser(
-        "prediction_auto", help="Prediction from autoencoder reconstruction model"
-    )
-    add_arguments(parser_prediction_auto)
-    parser_prediction_auto.set_defaults(func=call_prediction_auto)
-
     # autoencoder
     parser_autoencoder = subparsers.add_parser(
         "autoencoder", help="Train an Autoencoder"
@@ -85,26 +75,12 @@ def main(args=None):
     add_arguments(parser_autoencoder)
     parser_autoencoder.set_defaults(func=call_autoencoder)
 
-    # ssl
-    parser_ssl = subparsers.add_parser(
-        "ssl", help="Train an ssl"
-    )
-    add_arguments(parser_ssl)
-    parser_ssl.set_defaults(func=call_ssl)
-
     # classifier
     parser_classifier = subparsers.add_parser(
         "classifier", help="Train a classifier from features"
     )
     add_arguments(parser_classifier)
     parser_classifier.set_defaults(func=call_classifier)
-
-    # memory attention
-    parser_memory = subparsers.add_parser(
-        "memory", help="Train a memory attention"
-    )
-    add_arguments(parser_memory)
-    parser_memory.set_defaults(func=call_memory)
 
     if len(sys.argv) == 1 and args is None:
         # Show help if no args provided
@@ -130,24 +106,13 @@ def call_prediction(args):
     prediction(args.configuration_file, args.input_folder, args.output_folder)
 
 
-def call_prediction_auto(args):
-    prediction_auto(args.configuration_file, args.input_folder, args.output_folder)
-
-
 def call_autoencoder(args):
     train_autoencoder(args.configuration_file, args.input_folder, args.output_folder)
-
-
-def call_ssl(args):
-    train_ssl(args.configuration_file, args.input_folder, args.output_folder)
 
 
 def call_classifier(args):
     classifier(args.configuration_file, args.input_folder, args.output_folder)
 
-
-def call_memory(args):
-    train_memory(args.configuration_file, args.input_folder, args.output_folder)
 
 
 if __name__ == "__main__":
