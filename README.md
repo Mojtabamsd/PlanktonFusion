@@ -1,5 +1,5 @@
-# PlanktonFusion
-Real and Synthetic Data Integration for Classification
+# Edge Plankton Classification
+Realtime plankton classification
 
 
 ## Prerequisites
