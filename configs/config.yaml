@@ -10,7 +10,7 @@ sampling:
   path_uvp6: 'D:\mojmas\files\data\UVP6Net'
   path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
   path_output: 'D:\mojmas\files\data\result_sampling'
-  num_class: 5             # choose 13 or 23 classes
+  num_class: 13             # choose 13 or 23 classes
   sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp5: 0.9
   sampling_percent_uvp6: 0.9
@@ -42,10 +42,10 @@ training:
   gray: True
   pre_train: True # True or None
   learning_rate: 0.001
-  num_epoch: 100
-  save_model_every_n_epoch: 50
+  num_epoch: 70
+  save_model_every_n_epoch: 80
   loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
-#  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20231123092750' # if False training from scratch
+#  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20240301143842' # if False training from scratch
   path_pretrain: False # if False training from scratch
 
 
@@ -92,13 +92,4 @@ classifier:
   feature_type: 'resnet18_autoencoder'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18' or or 'resnet18_autoencoder'
   batch_size: 192
   classifier_type: 'xgboost' # choose 'svm' or 'xgboost' or 'isf'
-
-
-memory:
-  visual_embedded_model: 'D:\mojmas\files\data\result_sampling\autoencoder_training20240112130643'  #path of embedding model
-  loss: 'cross_entropy' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
-  k: 100  #number of k-NN
-  batch_size: 64
-  num_epoch: 100
-
 
