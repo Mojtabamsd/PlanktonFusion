@@ -1,5 +1,5 @@
 base:
-  cpu: False
+  cpu: True
   all_gpu: False
   gpu_index: 0
 
@@ -62,5 +62,6 @@ edge:
   path_model: 'D:\mojmas\files\data\result_sampling\training20231123092750'  # if it's not NN write None
   feature_type: 'resnet18'  # choose 'conv_autoencoder' or 'uvpec' or 'resnet18' or or 'resnet18_autoencoder'
   batch_size: 192
+  save_image: False
 
 

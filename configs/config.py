@@ -89,10 +89,11 @@ class ClassifierConfig:
 
 
 class EdgeConfig:
-    def __init__(self, path_model, batch_size, feature_type):
+    def __init__(self, path_model, batch_size, feature_type, save_image):
         self.path_model = path_model
         self.batch_size = batch_size
         self.feature_type = feature_type
+        self.save_image = save_image
 
 
 class Configuration:
@@ -104,7 +105,6 @@ class Configuration:
         self.output_path = output_path
         self.base = BaseConfig(**config_data['base'])
         self.sampling = SamplingConfig(**config_data['sampling'])
-        self.sampling_syn = SamplingSynConfig(**config_data['sampling_syn'])
         self.training = TrainingConfig(**config_data['training'])
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
