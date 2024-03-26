@@ -175,7 +175,8 @@ class ResNetCustom(nn.Module):
         self.latent_layer = nn.Linear(resnet.fc.in_features, latent_dim)
 
         # Add a new classification head
-        self.classification_head = nn.Linear(resnet.fc.in_features, num_classes)
+        self.classification_head = nn.Linear(latent_dim, num_classes)
+        # self.classification_head = nn.Linear(resnet.fc.in_features, num_classes)
 
     def forward(self, x):
         features = self.features(x)
@@ -185,7 +186,8 @@ class ResNetCustom(nn.Module):
         if self.encoder_mode:
             return latent_output
 
-        classification_output = self.classification_head(features)
+        classification_output = self.classification_head(latent_output)
+        # classification_output = self.classification_head(features)
         return classification_output, latent_output
 
 
