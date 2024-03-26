@@ -11,3 +11,6 @@ pillow==10.0.0
 tqdm
 timm
 umap-learn
+scikit-image
+xgboost
+seaborn

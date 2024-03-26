@@ -130,28 +130,49 @@ def plot_f1_scores_diff(out_path_name, model_names, *dataframes):
     base_model_scores = combined_report.loc["Base Model", "f1-score"]
     model1_scores = combined_report.loc["Model1", "f1-score"]
     model2_scores = combined_report.loc["Model2", "f1-score"]
+    model3_scores = combined_report.loc["Model3", "f1-score"]
 
     diff_model1 = model1_scores - base_model_scores
     diff_model2 = model2_scores - base_model_scores
+    diff_model3 = model3_scores - base_model_scores
 
     diff_df = pd.DataFrame({
         "Class Name": combined_report.reset_index()["Class Name"].unique(),
         "diff_Model1": diff_model1.values,
-        "diff_Model2": diff_model2.values
+        "diff_Model2": diff_model2.values,
+        "diff_Model3": diff_model3.values
     })
 
     diff_df = pd.melt(diff_df, id_vars=["Class Name"], var_name="Model", value_name="diff")
 
-    sns.set(style="whitegrid")
-    plt.figure(figsize=(12, 6))
+    # sns.set(style="whitegrid")
+    # plt.figure(figsize=(12, 6))
 
-    ax = sns.barplot(x="Class Name", y="diff", hue="Model", data=diff_df, width=0.35)
+    # ax = sns.barplot(x="Class Name", y="diff", hue="Model", data=diff_df, width=0.35)
 
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+    # Pivot the DataFrame
+    df_pivot = diff_df.pivot(index='Class Name', columns='Model', values='diff').reset_index()
+    df_pivot = df_pivot[0:-1]
+    # Number of subplots required
+    num_plots = len(df_pivot)
 
-    # Customize the plot
-    plt.xlabel('')
-    plt.ylabel('difference in f1-score')
+    # Create subplots
+    fig, axes = plt.subplots(int(num_plots / 2), 2, figsize=(10, 6), sharex=True)
+
+    # Plot each class in a separate subplot
+    for idx, (row, ax) in enumerate(zip(df_pivot.iterrows(), axes.flatten())):
+        sns.lineplot(ax=ax, x=['Base', 'Model1', 'Model2', 'Model3'], y=[0, row[1]['diff_Model1'],
+                                                                         row[1]['diff_Model2'],
+                                                                         row[1]['diff_Model3']])
+        ax.scatter(['Base', 'Model1', 'Model2', 'Model3'], [0, row[1]['diff_Model1'],
+                                                            row[1]['diff_Model2'],
+                                                            row[1]['diff_Model3']])
+        ax.set_title(row[1]['Class Name'])
+        ax.set_ylabel('Score')
+
+    fig.add_subplot(111, frameon=False)
+    plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+    # plt.xlabel('Models')
 
     plt.ylim(-max(abs(diff_df["diff"])), max(abs(diff_df["diff"])))
 
