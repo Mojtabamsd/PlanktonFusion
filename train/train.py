@@ -6,7 +6,6 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
-from models.classifier_vit import ViT, ViTPretrained
 import os
 import shutil
 import torch

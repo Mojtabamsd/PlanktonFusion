@@ -88,6 +88,13 @@ class ClassifierConfig:
         self.classifier_type = classifier_type
 
 
+class EdgeConfig:
+    def __init__(self, path_model, batch_size, feature_type):
+        self.path_model = path_model
+        self.batch_size = batch_size
+        self.feature_type = feature_type
+
+
 class Configuration:
     def __init__(self, config_file_path, input_path=None, output_path=None):
         with open(config_file_path, "r") as config_file:
@@ -102,6 +109,7 @@ class Configuration:
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])
         self.classifier = ClassifierConfig(**config_data['classifier'])
+        self.edge = EdgeConfig(**config_data['edge'])
 
     def write(self, filename):
         filename = Path(filename)
