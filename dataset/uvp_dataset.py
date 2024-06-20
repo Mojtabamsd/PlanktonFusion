@@ -8,7 +8,8 @@ from sklearn.model_selection import train_test_split
 
 
 class UvpDataset(Dataset):
-    def __init__(self, root_dir, num_class, csv_file=None, transform=None, phase='train', permitted_formats=None):
+    def __init__(self, root_dir, num_class, csv_file=None, transform=None, phase='train', gray=True,
+                 permitted_formats=None):
         self.root_dir = os.path.join(root_dir, 'output')
         if not os.path.exists(self.root_dir):
             self.root_dir = root_dir
@@ -16,6 +17,7 @@ class UvpDataset(Dataset):
         self.csv_file = csv_file
         self.transform = transform
         self.phase = phase
+        self.gray = gray
         self.permitted_formats = permitted_formats
 
         if self.csv_file:
@@ -73,6 +75,18 @@ class UvpDataset(Dataset):
 
     def load_image(self, img_path):
         image = Image.open(img_path)
+        if image.mode not in ['L', 'RGB']:
+            # Convert other modes like 'RGBA' or 'P' to 'RGB'
+            image = image.convert('RGB')
+        if self.gray:
+            if image.mode != 'L':
+                # Convert to grayscale
+                image = image.convert('L')
+        else:
+            if image.mode != 'RGB':
+                # Convert grayscale to RGB by repeating the grayscale channel three times
+                image = image.convert('L')
+                image = Image.merge("RGB", (image, image, image))
         if self.transform:
             image = self.transform(image)
         return image
