@@ -10,11 +10,11 @@ sampling:
   path_uvp6: 'D:\mojmas\files\data\UVP6Net'
   path_uvp6_csv: False  # load from a csv file dir i.e. 'dir' otherwise False
   path_output: 'D:\mojmas\files\data\result_sampling'
-  num_class: 5             # choose 13 or 23 classes
+  num_class: 13             # choose 13 or 23 classes
   sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp5: 0.9
   sampling_percent_uvp6: 0.9
-  target_size: [227, 227]  #image target size
+  target_size: [224, 224]  #image target size
   test_dataset_sampling: 'stratified' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
   test_percent_uvp5: 0.1  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
   test_percent_uvp6: 0.1
@@ -37,9 +37,9 @@ sampling_syn:
 
 
 training:
-  architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
+  architecture_type: 'vit_pretrained' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
   batch_size: 128
-  gray: True
+  gray: False
   pre_train: True # True or None
   learning_rate: 0.001
   num_epoch: 100

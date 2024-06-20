@@ -19,6 +19,8 @@ from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomA
     ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
 from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss
+from transformers import ViTForImageClassification
+
 
 def train_nn(config_path, input_path, output_path):
 
@@ -89,7 +91,8 @@ def train_nn(config_path, input_path, output_path):
                                num_class=config.sampling.num_class,
                                csv_file=input_csv_train,
                                transform=transform,
-                               phase=phase)
+                               phase=phase,
+                               gray=config.training.gray)
 
     class_counts = train_dataset.data_frame['label'].value_counts().sort_index().tolist()
     total_samples = sum(class_counts)
@@ -143,8 +146,11 @@ def train_nn(config_path, input_path, output_path):
                     dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
 
     elif config.training.architecture_type == 'vit_pretrained':
-        pretrained_model_name = "vit_base_patch16_224"
-        model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
+        # pretrained_model_name = "vit_base_patch16_224"
+        # model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
+        model = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224",
+                                                          num_labels=config.sampling.num_class,
+                                                          ignore_mismatched_sizes=True)
 
     else:
         console.quit("Please select correct parameter for architecture_type")
@@ -156,7 +162,7 @@ def train_nn(config_path, input_path, output_path):
     model.to(device)
 
     # test memory usage
-    console.info(memory_usage(config, model, device))
+    # console.info(memory_usage(config, model, device))
 
     if config.training.path_pretrain:
         pth_files = [file for file in os.listdir(training_path) if
@@ -200,8 +206,12 @@ def train_nn(config_path, input_path, output_path):
 
             optimizer.zero_grad()
             outputs = model(images)
-            _, preds = torch.max(outputs, 1)
-            loss = criterion(outputs, labels)
+            if config.training.architecture_type == 'vit_pretrained':
+                preds = outputs.logits.argmax(dim=-1)
+                loss = criterion(outputs.logits, labels)
+            else:
+                _, preds = torch.max(outputs, 1)
+                loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
@@ -261,7 +271,8 @@ def train_nn(config_path, input_path, output_path):
                                   num_class=config.sampling.num_class,
                                   csv_file=input_csv_test,
                                   transform=transform,
-                                  phase='test')
+                                  phase='test',
+                                  gray=config.training.gray)
 
         val_loader = DataLoader(test_dataset,
                                 batch_size=config.classifier.batch_size,
@@ -279,7 +290,11 @@ def train_nn(config_path, input_path, output_path):
             images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
-            _, preds = torch.max(outputs, 1)
+
+            if config.training.architecture_type == 'vit_pretrained':
+                preds = outputs.logits.argmax(dim=-1)
+            else:
+                _, preds = torch.max(outputs, 1)
 
             all_labels.extend(labels.cpu().numpy())
             all_preds.extend(preds.cpu().numpy())
