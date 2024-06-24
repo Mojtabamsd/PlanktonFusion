@@ -113,7 +113,8 @@ def train_nn(config_path, input_path, output_path):
     else:
         train_loader = DataLoader(train_dataset,
                                   batch_size=config.training.batch_size,
-                                  shuffle=True)
+                                  shuffle=True,
+                                  num_workers=4)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
@@ -276,7 +277,8 @@ def train_nn(config_path, input_path, output_path):
 
         val_loader = DataLoader(test_dataset,
                                 batch_size=config.classifier.batch_size,
-                                shuffle=True)
+                                shuffle=True,
+                                num_workers=4)
     else:
         console.quit('no data for testing model')
 
