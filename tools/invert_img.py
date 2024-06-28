@@ -21,10 +21,10 @@ def invert_images_in_directory(image_path):
                     inverted_img.save(temp_file_path)
                     img.close()  # Explicitly close the file handle
 
-                time.sleep(0.1)  # Short delay to ensure file is released
+                # time.sleep(0.1)  # Short delay to ensure file is released
                 os.remove(file_path)
                 os.rename(temp_file_path, file_path)
-                print(f"Inverted image saved: {file_path}")
+                # print(f"Inverted image saved: {file_path}")
             except Exception as e:
                 print(f"Error processing file {file_path}: {e}")
                 if os.path.exists(temp_file_path):
@@ -38,7 +38,7 @@ def main():
 
     invert_images_in_directory(args.image_path)
 
-    # image_path = r'D:\mojmas\files\data\result_sampling\test\prediction20240308120143\Copepoda'
+    # image_path = r'D:\mojmas\files\data\result_sampling\test\prediction20240308121300\detritus'
     # invert_images_in_directory(image_path)
 
 
