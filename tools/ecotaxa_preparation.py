@@ -48,7 +48,7 @@ def process_images_and_data(base_folder, output_folder, invert_img=True):
     return img_file_names, object_ids, object_annotation_categories
 
 
-def create_dataframe(data):
+def create_dataframe(data, sample_identifier):
     """Create Ecotaxa friendly DataFrame from the provided data dictionary."""
 
     df = pd.DataFrame(data)
@@ -67,6 +67,9 @@ def create_dataframe(data):
     df['object_annotation_status'] = ['predicted'] * len(df)
     df['object_annotation_status'][0] = '[t]'
 
+    df['sample_id'] = ['st' + str(sample_identifier)] * len(df)
+    df['sample_id'][0] = '[t]'
+
     df['object_annotation_category'] = df['object_annotation_category'].replace('Copepoda', 'Copepoda<Maxillopoda')
     df['object_annotation_category'] = df['object_annotation_category'].replace('Cnidaria', 'Cnidaria<Metazoa')
     df['object_annotation_category'] = df['object_annotation_category'].replace('Ctenophora', 'Ctenophora<Metazoa')
@@ -75,9 +78,9 @@ def create_dataframe(data):
     return df
 
 
-def save_data_and_zip(output_folder, base_folder, data):
+def save_data_and_zip(output_folder, base_folder, data, sample_identifier):
     """Save the data as a TSV file and zip the output folder."""
-    df = create_dataframe(data)
+    df = create_dataframe(data, sample_identifier)
     tsv_file_name = 'ecotaxa_' + os.path.basename(base_folder) + '.tsv'
     tsv_path = os.path.join(output_folder, tsv_file_name)
     df.to_csv(tsv_path, sep='\t', index=False)
@@ -99,7 +102,7 @@ def clean_directory(base_folder):
             shutil.rmtree(folder_path)
 
 
-def dataframe_preparation(base_folder):
+def dataframe_preparation(base_folder, sample_identifier):
 
     output_folder = os.path.join(base_folder, 'output')
     os.makedirs(output_folder, exist_ok=True)
@@ -113,19 +116,20 @@ def dataframe_preparation(base_folder):
     }
 
     # Save data and zip contents
-    zip_file_path = save_data_and_zip(output_folder, base_folder, data)
+    zip_file_path = save_data_and_zip(output_folder, base_folder, data, sample_identifier)
     clean_directory(base_folder)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Prepare classifier output for Ecotaxa website.")
-    parser.add_argument("image_path", type=str, help="Path to the directory containing images to be prepared.")
+    parser.add_argument("-i", "--image_path", type=str, help="Path to the directory containing images to be prepared.")
+    parser.add_argument("-s", "--sample_id", type=int, default='100', help="Sample id")
     args = parser.parse_args()
 
-    dataframe_preparation(args.image_path)
+    dataframe_preparation(args.image_path, args.sample_id)
 
     # image_path = r'D:\mojmas\files\data\result_sampling\test\prediction20240308121300 - Copy'
-    # dataframe_preparation(image_path)
+    # dataframe_preparation(image_path, sample_identifier=10)
 
 
 if __name__ == "__main__":
