@@ -67,7 +67,7 @@ def create_dataframe(data, sample_identifier):
     df['object_annotation_status'] = ['predicted'] * len(df)
     df['object_annotation_status'][0] = '[t]'
 
-    df['sample_id'] = ['st' + str(sample_identifier)] * len(df)
+    df['sample_id'] = ['st' + sample_identifier] * len(df)
     df['sample_id'][0] = '[t]'
 
     df['object_annotation_category'] = df['object_annotation_category'].replace('Copepoda', 'Copepoda<Maxillopoda')
@@ -123,7 +123,7 @@ def dataframe_preparation(base_folder, sample_identifier):
 def main():
     parser = argparse.ArgumentParser(description="Prepare classifier output for Ecotaxa website.")
     parser.add_argument("-i", "--image_path", type=str, help="Path to the directory containing images to be prepared.")
-    parser.add_argument("-s", "--sample_id", type=int, default='100', help="Sample id")
+    parser.add_argument("-s", "--sample_id", type=str, default='01', help="Sample id")
     args = parser.parse_args()
 
     dataframe_preparation(args.image_path, args.sample_id)
