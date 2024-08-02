@@ -192,25 +192,8 @@ def train_nn(config_path, input_path, output_path):
     elif config.training.loss == 'LACE':
         class_weights_tensor = class_weights_tensor.to(device)
         criterion = LogitAdjustmentLoss(weight=class_weights_tensor)
-    elif config.training.loss == 'proco':
-        criterion_ce = LogitAdjust(class_counts).to(device)
-        criterion_scl = ProCoLoss(contrast_dim=config.training.feat_dim, temperature=config.training.temp,
-                                  num_classes=config.sampling.num_class).to(device)
 
-    # optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
-    optimizer = torch.optim.SGD(model.parameters(), config.training.learning_rate,
-                                momentum=config.training.momentum,
-                                weight_decay=config.training.weight_decay)
-
-    if config.training.num_epoch == 200:
-        config.training.schedule = [160, 180]
-        config.training.warmup_epochs = 5
-    elif config.training.num_epoch == 400:
-        config.training.schedule = [360, 380]
-        config.training.warmup_epochs = 10
-    else:
-        config.training.schedule = [config.training.num_epoch * 0.8, config.training.num_epoch * 0.9]
-        config.training.warmup_epochs = 5 * config.training.num_epoch // 200
+    optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
     loss_values = []
 
