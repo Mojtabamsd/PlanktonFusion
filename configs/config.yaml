@@ -41,6 +41,19 @@ training:
   batch_size: 128
   gray: False
   pre_train: None # True or None
+  learning_rate: 0.001
+  num_epoch: 100
+  save_model_every_n_epoch: 50
+  loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
+#  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20231123092750' # if False training from scratch
+  path_pretrain: False # if False training from scratch
+
+
+training_contrastive:
+  architecture_type: 'resnet32' # choose 'resnet32'
+  batch_size: 128
+  gray: False
+  pre_train: None # True or None
   learning_rate: 0.3
   momentum: 0.9 # momentum of SGD solver (default: 0.9)
   weight_decay: 2e-4 #weight decay (default: 2e-4)
@@ -49,7 +62,7 @@ training:
   warmup_epochs: 5 # warmup epochs
   start_epoch: 0 # manual epoch number (useful on restarts)
   save_model_every_n_epoch: 50
-  loss: 'proco' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE' or 'proco'
+  loss: 'proco' # choose 'proco'
   feat_dim: 128 # feature dimension of mlp head
   temp: 0.1  # scalar temperature for contrastive learning
 #  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20231123092750' # if False training from scratch

@@ -47,6 +47,20 @@ class SamplingSynConfig:
 
 
 class TrainingConfig:
+    def __init__(self, architecture_type, batch_size, gray, pre_train, learning_rate, num_epoch,
+                 save_model_every_n_epoch, loss, path_pretrain):
+        self.architecture_type = architecture_type
+        self.batch_size = batch_size
+        self.gray = gray
+        self.pre_train = pre_train
+        self.learning_rate = learning_rate
+        self.num_epoch = num_epoch
+        self.save_model_every_n_epoch = save_model_every_n_epoch
+        self.loss = loss
+        self.path_pretrain = path_pretrain
+
+
+class TrainingContrastiveConfig:
     def __init__(self, architecture_type, batch_size, gray, pre_train, learning_rate,
                  weight_decay, momentum, schedule, num_epoch, warmup_epochs, start_epoch, save_model_every_n_epoch,
                  loss, feat_dim, temp, path_pretrain):
@@ -141,6 +155,7 @@ class Configuration:
         self.sampling = SamplingConfig(**config_data['sampling'])
         self.sampling_syn = SamplingSynConfig(**config_data['sampling_syn'])
         self.training = TrainingConfig(**config_data['training'])
+        self.training_contrastive = TrainingContrastiveConfig(**config_data['training_contrastive'])
         self.prediction = PredictionConfig(**config_data['prediction'])
         self.prediction_auto = PredictionAutoConfig(**config_data['prediction_auto'])
         self.autoencoder = AutoencoderConfig(**config_data['autoencoder'])

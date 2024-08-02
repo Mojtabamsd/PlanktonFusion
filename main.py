@@ -11,6 +11,7 @@ from feature_extraction.train_autoencoder import train_autoencoder
 from feature_extraction.ssl import train_ssl
 from feature_extraction.classifier import classifier
 from train.train_memory_attention import train_memory
+from train.train_contrastive import train_contrastive
 
 
 def add_arguments(obj):
@@ -63,6 +64,13 @@ def main(args=None):
     )
     add_arguments(parser_training)
     parser_training.set_defaults(func=call_training)
+
+    # training contrastive
+    parser_training_contrastive = subparsers.add_parser(
+        "training_contrastive", help="Train a contrastive architecture"
+    )
+    add_arguments(parser_training_contrastive)
+    parser_training_contrastive.set_defaults(func=call_training_contrastive)
 
     # prediction
     parser_prediction = subparsers.add_parser(
@@ -124,6 +132,10 @@ def call_sampling_syn(args):
 
 def call_training(args):
     train_nn(args.configuration_file, args.input_folder, args.output_folder)
+
+
+def call_training_contrastive(args):
+    train_contrastive(args.configuration_file, args.input_folder, args.output_folder)
 
 
 def call_prediction(args):
