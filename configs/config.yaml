@@ -51,12 +51,12 @@ training:
 
 training_contrastive:
   architecture_type: 'resnet50' # choose 'resnet50' or 'resnext50'
-  batch_size: 128
-  gray: False
+  batch_size: 2
+  gray: True
   pre_train: None # True or None
   learning_rate: 0.3
   momentum: 0.9 # momentum of SGD solver (default: 0.9)
-  weight_decay: 2e-4 #weight decay (default: 2e-4)
+  weight_decay: 0.0002 #weight decay (default: 2e-4)
   schedule: [160, 180] # learning rate schedule (when to drop lr by 10x)')
   num_epoch: 100
   warmup_epochs: 5 # warmup epochs
