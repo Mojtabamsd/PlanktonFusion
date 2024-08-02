@@ -147,7 +147,8 @@ class ResNet(nn.Module):
             groups: int = 1,
             width_per_group: int = 64,
             replace_stride_with_dilation: Optional[List[bool]] = None,
-            norm_layer: Optional[Callable[..., nn.Module]] = None
+            norm_layer: Optional[Callable[..., nn.Module]] = None,
+            gray: bool = False
     ) -> None:
         super(ResNet, self).__init__()
         if norm_layer is None:
@@ -165,7 +166,8 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
+        input_channels = 1 if gray else 3
+        self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
@@ -281,10 +283,10 @@ model_dict = {
 }
 
 class Model(nn.Module):
-    def __init__(self, num_classes=1000, name='resnet50', head='mlp', use_norm=True, feat_dim=1024):
+    def __init__(self, num_classes=1000, name='resnet50', head='mlp', use_norm=True, gray=False, feat_dim=1024):
         super(Model, self).__init__()
         model_fun, dim_in = model_dict[name]
-        self.encoder = model_fun()
+        self.encoder = model_fun(gray=gray)
         if head == 'mlp':
             self.head = nn.Sequential(nn.Linear(dim_in, dim_in),
                     nn.BatchNorm1d(dim_in),
