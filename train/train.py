@@ -18,8 +18,9 @@ import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
     ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
 from tools.augmentation import GaussianNoise
-from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss
+from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss, LogitAdjust
 from transformers import ViTForImageClassification
+from models.proco import ProCoLoss
 
 
 def train_nn(config_path, input_path, output_path):
@@ -191,6 +192,10 @@ def train_nn(config_path, input_path, output_path):
     elif config.training.loss == 'LACE':
         class_weights_tensor = class_weights_tensor.to(device)
         criterion = LogitAdjustmentLoss(weight=class_weights_tensor)
+    elif config.training.loss == 'proco':
+        criterion_ce = LogitAdjust(class_counts).to(device)
+        criterion_scl = ProCoLoss(contrast_dim=config.training.feat_dim, temperature=config.training.temp,
+                                  num_classes=config.sampling.num_class).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
 
