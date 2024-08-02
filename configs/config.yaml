@@ -42,6 +42,9 @@ training:
   gray: False
   pre_train: None # True or None
   learning_rate: 0.001
+  momentum: 0.9 # momentum of SGD solver (default: 0.9)
+  weight_decay: 2e-4 #weight decay (default: 2e-4)
+  schedule: [160, 180] # learning rate schedule (when to drop lr by 10x)')
   num_epoch: 100
   save_model_every_n_epoch: 50
   loss: 'proco' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE' or 'proco'
