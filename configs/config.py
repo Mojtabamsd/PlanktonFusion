@@ -63,7 +63,7 @@ class TrainingConfig:
 class TrainingContrastiveConfig:
     def __init__(self, architecture_type, batch_size, gray, pre_train, learning_rate,
                  weight_decay, momentum, schedule, num_epoch, warmup_epochs, start_epoch, save_model_every_n_epoch,
-                 loss, feat_dim, temp, path_pretrain):
+                 loss, feat_dim, temp, use_norm, path_pretrain):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
         self.gray = gray
@@ -79,6 +79,7 @@ class TrainingContrastiveConfig:
         self.loss = loss
         self.feat_dim = feat_dim
         self.temp = temp
+        self.use_norm = use_norm
         self.path_pretrain = path_pretrain
 
 

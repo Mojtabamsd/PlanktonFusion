@@ -50,7 +50,7 @@ training:
 
 
 training_contrastive:
-  architecture_type: 'resnet32' # choose 'resnet32'
+  architecture_type: 'resnet50' # choose 'resnet50' or 'resnext50'
   batch_size: 128
   gray: False
   pre_train: None # True or None
@@ -65,6 +65,7 @@ training_contrastive:
   loss: 'proco' # choose 'proco'
   feat_dim: 128 # feature dimension of mlp head
   temp: 0.1  # scalar temperature for contrastive learning
+  use_norm: True # cosine classifier.
 #  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20231123092750' # if False training from scratch
   path_pretrain: False # if False training from scratch
 
