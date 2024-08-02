@@ -6,12 +6,14 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
+from models import resnext
 from models.classifier_vit import ViT, ViTPretrained
 import os
 import shutil
 import torch
 import torch.nn as nn
 from tools.utils import report_to_df, plot_loss, memory_usage
+from tools.randaugment import rand_augment_transform
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
@@ -20,6 +22,7 @@ from tools.augmentation import GaussianNoise
 from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss, LogitAdjust
 from transformers import ViTForImageClassification
 from models.proco import ProCoLoss
+import time
 
 
 def train_contrastive(config_path, input_path, output_path):
@@ -53,8 +56,8 @@ def train_contrastive(config_path, input_path, output_path):
         console.info("Label not provided for testing")
         input_csv_test = None
 
-    if config.training.path_pretrain:
-        training_path = Path(config.training.path_pretrain)
+    if config.training_contrastive.path_pretrain:
+        training_path = Path(config.training_contrastive.path_pretrain)
         config.training_path = training_path
     else:
         time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
@@ -72,27 +75,48 @@ def train_contrastive(config_path, input_path, output_path):
     config.write(output_config_filename)
 
     # Define data transformations
-    transform = transforms.Compose([
+    randaug_m = 10
+    randaug_n = 2
+    # ra_params = dict(translate_const=int(224 * 0.45), img_mean=tuple([min(255, round(255 * x)) for x in rgb_mean]), )
+    grayscale_mean = 128
+    ra_params = dict(
+        translate_const=int(config.sampling.target_size[0] * 0.45),
+        img_mean=grayscale_mean
+    )
+
+    transform_base = [
         transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
-        RandomHorizontalFlip(),
-        RandomRotation(degrees=30),
-        RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
-        GaussianNoise(std=0.1),
         RandomResizedCrop((config.sampling.target_size[0], config.sampling.target_size[1])),
-        ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-        RandomGrayscale(p=0.1),
-        RandomPerspective(distortion_scale=0.2, p=0.5),
-        RandomVerticalFlip(p=0.1),
+        RandomHorizontalFlip(),
+        transforms.RandomGrayscale(p=0.2),
+        rand_augment_transform('rand-n{}-m{}-mstd0.5'.format(randaug_n, randaug_m), ra_params, use_cmc=True),
         transforms.ToTensor(),
-    ])
+    ]
+    transform_sim = [
+        transforms.RandomResizedCrop(config.sampling.target_size[0]),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+    ]
+
+    transform_train = [transforms.Compose(transform_base), transforms.Compose(transform_sim),
+                       transforms.Compose(transform_sim), ]
+
+    transform_val = transforms.Compose([
+        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
+        transforms.ToTensor()
+        ])
 
     # Create uvp dataset datasets for training and validation
     train_dataset = UvpDataset(root_dir=input_folder_train,
                                num_class=config.sampling.num_class,
                                csv_file=input_csv_train,
-                               transform=transform,
+                               transform=transform_train,
                                phase=phase,
-                               gray=config.training.gray)
+                               gray=config.training_contrastive.gray)
 
     class_counts = train_dataset.data_frame['label'].value_counts().sort_index().tolist()
     total_samples = sum(class_counts)
@@ -107,12 +131,12 @@ def train_contrastive(config_path, input_path, output_path):
                                                          num_samples=len(train_dataset),
                                                          replacement=True)
         train_loader = DataLoader(train_dataset,
-                                  batch_size=config.training.batch_size,
+                                  batch_size=config.training_contrastive.batch_size,
                                   sampler=sampler)
 
     else:
         train_loader = DataLoader(train_dataset,
-                                  batch_size=config.training.batch_size,
+                                  batch_size=config.training_contrastive.batch_size,
                                   shuffle=True,
                                   num_workers=4)
 
@@ -120,38 +144,17 @@ def train_contrastive(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    if config.training.architecture_type == 'simple_cnn':
-        model = SimpleCNN(num_classes=config.sampling.num_class,
-                          input_size=config.sampling.target_size,
-                          gray=config.training.gray)
+    if config.training_contrastive.architecture_type == 'resnet50':
+        model = resnext.Model(name='resnet50', num_classes=config.sampling.num_class,
+                              feat_dim=config.training_contrastive.feat_dim,
+                              use_norm=config.training_contrastive.use_norm,
+                              gray=config.training_contrastive.gray)
 
-    elif config.training.architecture_type == 'resnet18':
-        model = ResNetCustom(num_classes=config.sampling.num_class,
-                             input_size=config.sampling.target_size,
-                             gray=config.training.gray,
-                             pretrained=config.training.pre_train,
-                             freeze_layers=False)
-
-    elif config.training.architecture_type == 'mobilenet':
-        model = MobileNetCustom(num_classes=config.sampling.num_class,
-                                input_size=config.sampling.target_size,
-                                gray=config.training.gray)
-
-    elif config.training.architecture_type == 'shufflenet':
-        model = ShuffleNetCustom(num_classes=config.sampling.num_class,
-                                 input_size=config.sampling.target_size,
-                                 gray=config.training.gray)
-
-    elif config.training.architecture_type == 'vit_base':
-        model = ViT(input_size=config.sampling.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
-                    dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
-
-    elif config.training.architecture_type == 'vit_pretrained':
-        # pretrained_model_name = "vit_base_patch16_224"
-        # model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
-        model = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224",
-                                                          num_labels=config.sampling.num_class,
-                                                          ignore_mismatched_sizes=True)
+    elif config.training_contrastive.architecture_type == 'resnext50':
+        model = resnext.Model(name='resnext50', num_classes=config.sampling.num_class,
+                              feat_dim=config.training_contrastive.feat_dim,
+                              use_norm=config.training_contrastive.use_norm,
+                              gray=config.training_contrastive.gray)
 
     else:
         console.quit("Please select correct parameter for architecture_type")
@@ -165,7 +168,7 @@ def train_contrastive(config_path, input_path, output_path):
     # test memory usage
     # console.info(memory_usage(config, model, device))
 
-    if config.training.path_pretrain:
+    if config.training_contrastive.path_pretrain:
         pth_files = [file for file in os.listdir(training_path) if
                      file.endswith('.pth') and file != 'model_weights_final.pth']
         epochs = [int(file.split('_')[-1].split('.')[0]) for file in pth_files]
@@ -181,71 +184,96 @@ def train_contrastive(config_path, input_path, output_path):
         latest_epoch = 0
 
     # Loss criterion and optimizer
-    if config.training.loss == 'cross_entropy':
-        criterion = nn.CrossEntropyLoss()
-    elif config.training.loss == 'cross_entropy_weight':
-        class_weights_tensor = class_weights_tensor.to(device)
-        criterion = WeightedCrossEntropyLoss(weight=class_weights_tensor)
-    elif config.training.loss == 'focal':
-        criterion = FocalLoss(alpha=1, gamma=2)
-    elif config.training.loss == 'LACE':
-        class_weights_tensor = class_weights_tensor.to(device)
-        criterion = LogitAdjustmentLoss(weight=class_weights_tensor)
-    elif config.training.loss == 'proco':
+    if config.training_contrastive.loss == 'proco':
         criterion_ce = LogitAdjust(class_counts).to(device)
-        criterion_scl = ProCoLoss(contrast_dim=config.training.feat_dim, temperature=config.training.temp,
+        criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                  temperature=config.training_contrastive.temp,
                                   num_classes=config.sampling.num_class).to(device)
 
-    # optimizer = optim.Adam(model.parameters(), lr=config.training.learning_rate)
-    optimizer = torch.optim.SGD(model.parameters(), config.training.learning_rate,
-                                momentum=config.training.momentum,
-                                weight_decay=config.training.weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
+                                momentum=config.training_contrastive.momentum,
+                                weight_decay=config.training_contrastive.weight_decay)
 
-    if config.training.num_epoch == 200:
-        config.training.schedule = [160, 180]
-        config.training.warmup_epochs = 5
-    elif config.training.num_epoch == 400:
-        config.training.schedule = [360, 380]
-        config.training.warmup_epochs = 10
+    if config.training_contrastive.num_epoch == 200:
+        config.training_contrastive.schedule = [160, 180]
+        config.training_contrastive.warmup_epochs = 5
+    elif config.training_contrastive.num_epoch == 400:
+        config.training_contrastive.schedule = [360, 380]
+        config.training_contrastive.warmup_epochs = 10
     else:
-        config.training.schedule = [config.training.num_epoch * 0.8, config.training.num_epoch * 0.9]
-        config.training.warmup_epochs = 5 * config.training.num_epoch // 200
+        config.training_contrastive.schedule = [config.training_contrastive.num_epoch * 0.8, config.training_contrastive.num_epoch * 0.9]
+        config.training_contrastive.warmup_epochs = 5 * config.training_contrastive.num_epoch // 200
 
     loss_values = []
 
     # Training loop
-    for epoch in range(latest_epoch, config.training.num_epoch):
+    for epoch in range(latest_epoch, config.training_contrastive.num_epoch):
         model.train()
         running_loss = 0.0
         running_corrects = 0
 
+        batch_time = AverageMeter('Time', ':6.3f')
+        ce_loss_all = AverageMeter('CE_Loss', ':.4e')
+        scl_loss_all = AverageMeter('SCL_Loss', ':.4e')
+        top1 = AverageMeter('Acc@1', ':6.2f')
+
+        end = time.time()
+
+
         for batch_idx, (images, labels, _) in enumerate(train_loader):
+            images = torch.cat([images[0], images[1], images[2]], dim=0)
             images, labels = images.to(device), labels.to(device)
+            batch_size = labels.shape[0]
+
+            feat_mlp, ce_logits, _ = model(images)
+            _, f2, f3 = torch.split(feat_mlp, [batch_size, batch_size, batch_size], dim=0)
+            ce_logits, _, __ = torch.split(ce_logits, [batch_size, batch_size, batch_size], dim=0)
+
+            contrast_logits1 = criterion_scl(f2, labels)
+            contrast_logits2 = criterion_scl(f3, labels)
+            contrast_logits = (contrast_logits1 + contrast_logits2) / 2
+
+            scl_loss = (criterion_ce(contrast_logits1, labels) + criterion_ce(contrast_logits2, labels)) / 2
+            ce_loss = criterion_ce(ce_logits, labels)
+
+            alpha = 1
+            logits = ce_logits + alpha * contrast_logits
+            loss = ce_loss + alpha * scl_loss
+
+            ce_loss_all.update(ce_loss.item(), batch_size)
+            scl_loss_all.update(scl_loss.item(), batch_size)
+
+            acc1 = accuracy(logits, labels, topk=(1,))
+            top1.update(acc1[0].item(), batch_size)
 
             optimizer.zero_grad()
-            outputs = model(images)
-            if config.training.architecture_type == 'vit_pretrained':
-                preds = outputs.logits.argmax(dim=-1)
-                loss = criterion(outputs.logits, labels)
-            else:
-                _, preds = torch.max(outputs, 1)
-                loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()
-            running_corrects += torch.sum(preds == labels.data)
+            batch_time.update(time.time() - end)
+            end = time.time()
 
             # # for debug
             # from tools.image import save_img
             # save_img(images, batch_idx, epoch, training_path/"augmented")
 
-        average_loss = running_loss / len(train_loader)
-        average_acc = running_corrects.double() / len(train_loader.dataset)
-        loss_values.append(average_loss)
-        console.info(f"Epoch [{epoch + 1}/{config.training.num_epoch}] - Loss: {average_loss:.4f} "
-                     f"- Training Acc: {average_acc:.4f}")
-        plot_loss(loss_values, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path)
+            if batch_idx % 20 == 0:
+                output = ('Epoch: [{0}][{1}/{2}] \t'
+                          'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                          'CE_Loss {ce_loss.val:.4f} ({ce_loss.avg:.4f})\t'
+                          'SCL_Loss {scl_loss.val:.4f} ({scl_loss.avg:.4f})\t'
+                          'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
+                    epoch, batch_idx, len(train_loader), batch_time=batch_time,
+                    ce_loss=ce_loss_all, scl_loss=scl_loss_all, top1=top1, ))  # TODO
+                print(output)
+
+        console.info(f"CE loss train [{epoch + 1}/{config.training_contrastive.num_epoch}] - Loss: {ce_loss_all.avg:.4f} ")
+        console.info(f"SCL loss train [{epoch + 1}/{config.training_contrastive.num_epoch}] - Loss: {scl_loss_all.avg:.4f} ")
+        console.info(f"acc train top1 [{epoch + 1}/{config.training_contrastive.num_epoch}] - Acc: {top1.avg:.4f} ")
+
+        plot_loss(ce_loss_all, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='CE_loss.png')
+        plot_loss(scl_loss_all, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='SCL_loss.png')
+        plot_loss(top1, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='ACC.png')
 
         # Update the learning rate
         if (epoch - latest_epoch) > 50 and loss_values[-1] > loss_values[-2]:
@@ -253,7 +281,7 @@ def train_contrastive(config_path, input_path, output_path):
                 param_group['lr'] *= 0.5
 
         # save intermediate weight
-        if (epoch + 1) % config.training.save_model_every_n_epoch == 0:
+        if (epoch + 1) % config.training_contrastive.save_model_every_n_epoch == 0:
             # Save the model weights
             saved_weights = f'model_weights_epoch_{epoch + 1}.pth'
             saved_weights_file = training_path / saved_weights
@@ -262,7 +290,9 @@ def train_contrastive(config_path, input_path, output_path):
             torch.save(model.state_dict(), saved_weights_file)
 
     # Create a plot of the loss values
-    plot_loss(loss_values, num_epoch=(config.training.num_epoch - latest_epoch), training_path=config.training_path)
+    plot_loss(ce_loss_all, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
+    plot_loss(scl_loss_all, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='SCL_loss.png')
+    plot_loss(top1, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='ACC.png')
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"
@@ -279,7 +309,7 @@ def train_contrastive(config_path, input_path, output_path):
         val_dataset = train_dataset
 
         val_loader = DataLoader(val_dataset,
-                                batch_size=config.training.batch_size,
+                                batch_size=config.training_contrastive.batch_size,
                                 shuffle=True)
 
     elif input_csv_test is not None:
@@ -288,9 +318,9 @@ def train_contrastive(config_path, input_path, output_path):
         test_dataset = UvpDataset(root_dir=input_folder_test,
                                   num_class=config.sampling.num_class,
                                   csv_file=input_csv_test,
-                                  transform=transform,
+                                  transform=transform_val,
                                   phase='test',
-                                  gray=config.training.gray)
+                                  gray=config.training_contrastive.gray)
 
         val_loader = DataLoader(test_dataset,
                                 batch_size=config.classifier.batch_size,
@@ -310,7 +340,7 @@ def train_contrastive(config_path, input_path, output_path):
 
             outputs = model(images)
 
-            if config.training.architecture_type == 'vit_pretrained':
+            if config.training_contrastive.architecture_type == 'vit_pretrained':
                 preds = outputs.logits.argmax(dim=-1)
             else:
                 _, preds = torch.max(outputs, 1)
@@ -358,5 +388,46 @@ def train_contrastive(config_path, input_path, output_path):
 
 
 
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self, name, fmt=':f'):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        return fmtstr.format(**self.__dict__)
+
+
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred)).contiguous()
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
 
 
