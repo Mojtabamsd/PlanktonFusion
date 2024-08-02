@@ -48,7 +48,7 @@ class SamplingSynConfig:
 
 class TrainingConfig:
     def __init__(self, architecture_type, batch_size, gray, pre_train, learning_rate, num_epoch,
-                 save_model_every_n_epoch, loss, path_pretrain):
+                 save_model_every_n_epoch, loss, feat_dim, temp, path_pretrain):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
         self.gray = gray
@@ -57,6 +57,8 @@ class TrainingConfig:
         self.num_epoch = num_epoch
         self.save_model_every_n_epoch = save_model_every_n_epoch
         self.loss = loss
+        self.feat_dim = feat_dim
+        self.temp = temp
         self.path_pretrain = path_pretrain
 
 
