@@ -87,8 +87,16 @@ class UvpDataset(Dataset):
                 # Convert grayscale to RGB by repeating the grayscale channel three times
                 image = image.convert('L')
                 image = Image.merge("RGB", (image, image, image))
-        if self.transform:
-            image = self.transform(image)
+
+        if self.transform is not None:
+            if self.phase == 'train' and self.transform.__len__() == 3:
+                sample1 = self.transform[0](image)
+                sample2 = self.transform[1](image)
+                sample3 = self.transform[2](image)
+                return [sample1, sample2, sample3]
+            else:
+                return self.transform(image)
+
         return image
 
     def is_permitted_format(self, filename):
