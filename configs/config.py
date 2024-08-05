@@ -11,7 +11,7 @@ class BaseConfig:
 
 class SamplingConfig:
     def __init__(self, path_uvp5, path_uvp6, path_uvp6_csv, path_output, uvp_type, num_class,
-                 sampling_method, sampling_percent_uvp5, sampling_percent_uvp6, target_size,
+                 sampling_method, sampling_percent_uvp5, sampling_percent_uvp6,
                  test_dataset_sampling, test_percent_uvp6, test_percent_uvp5, create_folder):
         self.path_uvp5 = path_uvp5
         self.path_uvp6 = path_uvp6
@@ -22,7 +22,6 @@ class SamplingConfig:
         self.sampling_method = sampling_method
         self.sampling_percent_uvp5 = sampling_percent_uvp5
         self.sampling_percent_uvp6 = sampling_percent_uvp6
-        self.target_size = target_size
         self.test_dataset_sampling = test_dataset_sampling
         self.test_percent_uvp6 = test_percent_uvp6
         self.test_percent_uvp5 = test_percent_uvp5
@@ -47,11 +46,12 @@ class SamplingSynConfig:
 
 
 class TrainingConfig:
-    def __init__(self, architecture_type, batch_size, gray, pre_train, learning_rate, num_epoch,
+    def __init__(self, architecture_type, batch_size, gray, target_size, pre_train, learning_rate, num_epoch,
                  save_model_every_n_epoch, loss, path_pretrain):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
         self.gray = gray
+        self.target_size = target_size
         self.pre_train = pre_train
         self.learning_rate = learning_rate
         self.num_epoch = num_epoch
@@ -61,12 +61,13 @@ class TrainingConfig:
 
 
 class TrainingContrastiveConfig:
-    def __init__(self, architecture_type, batch_size, gray, pre_train, learning_rate,
+    def __init__(self, architecture_type, batch_size, gray, target_size, pre_train, learning_rate,
                  weight_decay, momentum, schedule, num_epoch, warmup_epochs, start_epoch, save_model_every_n_epoch,
                  loss, feat_dim, temp, use_norm, path_pretrain):
         self.architecture_type = architecture_type
         self.batch_size = batch_size
         self.gray = gray
+        self.target_size = target_size
         self.pre_train = pre_train
         self.learning_rate = learning_rate
         self.momentum = momentum

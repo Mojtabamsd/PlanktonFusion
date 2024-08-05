@@ -14,7 +14,6 @@ sampling:
   sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp5: 0.9
   sampling_percent_uvp6: 0.9
-  target_size: [224, 224]  #image target size
   test_dataset_sampling: 'stratified' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
   test_percent_uvp5: 0.1  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
   test_percent_uvp6: 0.1
@@ -40,6 +39,7 @@ training:
   architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
   batch_size: 128
   gray: False
+  target_size: [32, 32]  #image target size
   pre_train: None # True or None
   learning_rate: 0.001
   num_epoch: 100
@@ -53,6 +53,7 @@ training_contrastive:
   architecture_type: 'resnet50' # choose 'resnet50' or 'resnext50'
   batch_size: 2
   gray: True
+  target_size: [32, 32]  #image target size
   pre_train: None # True or None
   learning_rate: 0.3
   momentum: 0.9 # momentum of SGD solver (default: 0.9)
