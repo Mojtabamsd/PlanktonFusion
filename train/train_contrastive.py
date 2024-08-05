@@ -19,7 +19,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
     ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
-from tools.augmentation import GaussianNoise
+from tools.augmentation import ResizeAndPad
 from models.loss import LogitAdjust
 from models.proco import ProCoLoss
 import time
@@ -96,20 +96,21 @@ def train_contrastive(config_path, input_path, output_path):
     # ra_params = dict(translate_const=int(224 * 0.45), img_mean=tuple([min(255, round(255 * x)) for x in rgb_mean]), )
     grayscale_mean = 128
     ra_params = dict(
-        translate_const=int(config.sampling.target_size[0] * 0.45),
+        translate_const=int(config.training_contrastive.target_size[0] * 0.45),
         img_mean=grayscale_mean
     )
 
     transform_base = [
-        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
-        RandomResizedCrop((config.sampling.target_size[0], config.sampling.target_size[1])),
+        ResizeAndPad((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
+        RandomResizedCrop((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
         RandomHorizontalFlip(),
         transforms.RandomGrayscale(p=0.2),
         rand_augment_transform('rand-n{}-m{}-mstd0.5'.format(randaug_n, randaug_m), ra_params, use_cmc=True),
         transforms.ToTensor(),
     ]
     transform_sim = [
-        transforms.RandomResizedCrop(config.sampling.target_size[0]),
+        ResizeAndPad((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
+        transforms.RandomResizedCrop(config.training_contrastive.target_size[0]),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
@@ -122,7 +123,7 @@ def train_contrastive(config_path, input_path, output_path):
                        transforms.Compose(transform_sim), ]
 
     transform_val = transforms.Compose([
-        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
+        ResizeAndPad((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
         transforms.ToTensor()
         ])
 
@@ -272,9 +273,9 @@ def train_contrastive(config_path, input_path, output_path):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            # # for debug
-            # from tools.image import save_img
-            # save_img(images, batch_idx, epoch, training_path/"augmented")
+            # for debug
+            from tools.image import save_img
+            save_img(images, batch_idx, epoch, training_path/"augmented")
 
             if batch_idx % 20 == 0:
                 output = ('Epoch: [{0}][{1}/{2}] \t'
