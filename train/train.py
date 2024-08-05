@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
     ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
-from tools.augmentation import GaussianNoise
+from tools.augmentation import GaussianNoise, ResizeAndPad
 from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss, LogitAdjust
 from transformers import ViTForImageClassification
 from models.proco import ProCoLoss
@@ -73,19 +73,35 @@ def train_nn(config_path, input_path, output_path):
     config.write(output_config_filename)
 
     # Define data transformations
-    transform = transforms.Compose([
-        transforms.Resize((config.sampling.target_size[0], config.sampling.target_size[1])),
-        RandomHorizontalFlip(),
-        RandomRotation(degrees=30),
-        RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
-        GaussianNoise(std=0.1),
-        RandomResizedCrop((config.sampling.target_size[0], config.sampling.target_size[1])),
-        ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-        RandomGrayscale(p=0.1),
-        RandomPerspective(distortion_scale=0.2, p=0.5),
-        RandomVerticalFlip(p=0.1),
-        transforms.ToTensor(),
-    ])
+    if config.training.padding:
+        transform = transforms.Compose([
+            ResizeAndPad((config.training.target_size[0], config.training.target_size[1])),
+            RandomHorizontalFlip(),
+            RandomRotation(degrees=30),
+            RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
+            GaussianNoise(std=0.1),
+            RandomResizedCrop((config.training.target_size[0], config.training.target_size[1])),
+            ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+            RandomGrayscale(p=0.1),
+            RandomPerspective(distortion_scale=0.2, p=0.5),
+            RandomVerticalFlip(p=0.1),
+            transforms.ToTensor(),
+        ])
+
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((config.training.target_size[0], config.training.target_size[1])),
+            RandomHorizontalFlip(),
+            RandomRotation(degrees=30),
+            RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
+            GaussianNoise(std=0.1),
+            RandomResizedCrop((config.training.target_size[0], config.training.target_size[1])),
+            ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+            RandomGrayscale(p=0.1),
+            RandomPerspective(distortion_scale=0.2, p=0.5),
+            RandomVerticalFlip(p=0.1),
+            transforms.ToTensor(),
+        ])
 
     # Create uvp dataset datasets for training and validation
     train_dataset = UvpDataset(root_dir=input_folder_train,
@@ -123,28 +139,28 @@ def train_nn(config_path, input_path, output_path):
 
     if config.training.architecture_type == 'simple_cnn':
         model = SimpleCNN(num_classes=config.sampling.num_class,
-                          input_size=config.sampling.target_size,
+                          input_size=config.training.target_size,
                           gray=config.training.gray)
 
     elif config.training.architecture_type == 'resnet18':
         model = ResNetCustom(num_classes=config.sampling.num_class,
-                             input_size=config.sampling.target_size,
+                             input_size=config.training.target_size,
                              gray=config.training.gray,
                              pretrained=config.training.pre_train,
                              freeze_layers=False)
 
     elif config.training.architecture_type == 'mobilenet':
         model = MobileNetCustom(num_classes=config.sampling.num_class,
-                                input_size=config.sampling.target_size,
+                                input_size=config.training.target_size,
                                 gray=config.training.gray)
 
     elif config.training.architecture_type == 'shufflenet':
         model = ShuffleNetCustom(num_classes=config.sampling.num_class,
-                                 input_size=config.sampling.target_size,
+                                 input_size=config.training.target_size,
                                  gray=config.training.gray)
 
     elif config.training.architecture_type == 'vit_base':
-        model = ViT(input_size=config.sampling.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
+        model = ViT(input_size=config.training.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
                     dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
 
     elif config.training.architecture_type == 'vit_pretrained':
