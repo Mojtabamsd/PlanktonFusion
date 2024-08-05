@@ -14,6 +14,7 @@ sampling:
   sampling_method: 'stratified'  # choose 'fixed' or 'uniform' or 'stratified'
   sampling_percent_uvp5: 0.9
   sampling_percent_uvp6: 0.9
+  target_size: None  # default is better to set None for not loosing aspect ratio
   test_dataset_sampling: 'stratified' # choose 'fixed' or 'uniform'(percent) or 'stratified',  it created [test_percent] of dataset for testing algorithm
   test_percent_uvp5: 0.1  #for 'stratified' it should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
   test_percent_uvp6: 0.1
@@ -40,6 +41,7 @@ training:
   batch_size: 128
   gray: False
   target_size: [32, 32]  #image target size
+  padding: True # pad image to preserve aspect ratio
   pre_train: None # True or None
   learning_rate: 0.001
   num_epoch: 100
@@ -54,6 +56,7 @@ training_contrastive:
   batch_size: 2
   gray: True
   target_size: [32, 32]  #image target size
+  padding: True # pad image to preserve aspect ratio
   pre_train: None # True or None
   learning_rate: 0.3
   momentum: 0.9 # momentum of SGD solver (default: 0.9)
