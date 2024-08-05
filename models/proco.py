@@ -251,14 +251,14 @@ class ProCoLoss(nn.Module):
         self.estimator.reset()
 
 
-    def forward(self, features, labels=None, sup_logits=None, args=None):
+    def forward(self, features, labels=None, sup_logits=None, world_size=1):
         batch_size = features.size(0)
         N = batch_size
 
         if labels is not None:
 
-            total_features_list = [torch.zeros_like(features) for _ in range(args.world_size)]
-            total_labels_list = [torch.zeros_like(labels) for _ in range(args.world_size)]
+            total_features_list = [torch.zeros_like(features) for _ in range(world_size)]
+            total_labels_list = [torch.zeros_like(labels) for _ in range(world_size)]
 
             dist.all_gather(total_features_list, features)
             dist.all_gather(total_labels_list, labels)
