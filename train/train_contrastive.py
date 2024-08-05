@@ -7,22 +7,23 @@ from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
 from models import resnext
-from models.classifier_vit import ViT, ViTPretrained
+import math
 import os
 import shutil
 import torch
 import torch.nn as nn
-from tools.utils import report_to_df, plot_loss, memory_usage
+import torch.distributed as dist
+from tools.utils import report_to_df, plot_loss, memory_usage, shot_acc
 from tools.randaugment import rand_augment_transform
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
     ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
 from tools.augmentation import GaussianNoise
-from models.loss import FocalLoss, WeightedCrossEntropyLoss, LogitAdjustmentLoss, LogitAdjust
-from transformers import ViTForImageClassification
+from models.loss import LogitAdjust
 from models.proco import ProCoLoss
 import time
+import torch.nn.functional as F
 
 
 def train_contrastive(config_path, input_path, output_path):
@@ -73,6 +74,21 @@ def train_contrastive(config_path, input_path, output_path):
     # Save configuration file
     output_config_filename = training_path / "config.yaml"
     config.write(output_config_filename)
+
+    # parallel processing
+    os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
+    os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '12345')
+    os.environ['WORLD_SIZE'] = os.getenv('WORLD_SIZE', '1')
+    os.environ['RANK'] = os.getenv('RANK', '0')
+    os.environ['LOCAL_RANK'] = os.getenv('LOCAL_RANK', '0')
+
+    world_size = int(os.environ["WORLD_SIZE"])
+    rank = int(os.environ["RANK"])
+    gpu = int(os.environ["LOCAL_RANK"])
+
+    distributed = True
+    multiprocessing_distributed = True
+    dist.init_process_group(backend='gloo', init_method='env://', world_size=world_size, rank=rank)
 
     # Define data transformations
     randaug_m = 10
@@ -204,7 +220,9 @@ def train_contrastive(config_path, input_path, output_path):
         config.training_contrastive.schedule = [config.training_contrastive.num_epoch * 0.8, config.training_contrastive.num_epoch * 0.9]
         config.training_contrastive.warmup_epochs = 5 * config.training_contrastive.num_epoch // 200
 
-    loss_values = []
+    ce_loss_all_avg = []
+    scl_loss_all_avg = []
+    top1_avg = []
 
     # Training loop
     for epoch in range(latest_epoch, config.training_contrastive.num_epoch):
@@ -212,13 +230,14 @@ def train_contrastive(config_path, input_path, output_path):
         running_loss = 0.0
         running_corrects = 0
 
+        adjust_lr(optimizer, epoch, config)
+
         batch_time = AverageMeter('Time', ':6.3f')
         ce_loss_all = AverageMeter('CE_Loss', ':.4e')
         scl_loss_all = AverageMeter('SCL_Loss', ':.4e')
         top1 = AverageMeter('Acc@1', ':6.2f')
 
         end = time.time()
-
 
         for batch_idx, (images, labels, _) in enumerate(train_loader):
             images = torch.cat([images[0], images[1], images[2]], dim=0)
@@ -271,14 +290,13 @@ def train_contrastive(config_path, input_path, output_path):
         console.info(f"SCL loss train [{epoch + 1}/{config.training_contrastive.num_epoch}] - Loss: {scl_loss_all.avg:.4f} ")
         console.info(f"acc train top1 [{epoch + 1}/{config.training_contrastive.num_epoch}] - Acc: {top1.avg:.4f} ")
 
-        plot_loss(ce_loss_all, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='CE_loss.png')
-        plot_loss(scl_loss_all, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='SCL_loss.png')
-        plot_loss(top1, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='ACC.png')
+        ce_loss_all_avg.append(ce_loss_all.avg)
+        scl_loss_all_avg.append(scl_loss_all.avg)
+        top1_avg.append(top1.avg)
 
-        # Update the learning rate
-        if (epoch - latest_epoch) > 50 and loss_values[-1] > loss_values[-2]:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.5
+        plot_loss(ce_loss_all_avg, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='CE_loss.png')
+        plot_loss(scl_loss_all_avg, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='SCL_loss.png')
+        plot_loss(top1_avg, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='ACC.png')
 
         # save intermediate weight
         if (epoch + 1) % config.training_contrastive.save_model_every_n_epoch == 0:
@@ -290,9 +308,9 @@ def train_contrastive(config_path, input_path, output_path):
             torch.save(model.state_dict(), saved_weights_file)
 
     # Create a plot of the loss values
-    plot_loss(ce_loss_all, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
-    plot_loss(scl_loss_all, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='SCL_loss.png')
-    plot_loss(top1, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='ACC.png')
+    plot_loss(ce_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
+    plot_loss(scl_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='SCL_loss.png')
+    plot_loss(top1_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='ACC.png')
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"
@@ -333,21 +351,27 @@ def train_contrastive(config_path, input_path, output_path):
     model.eval()
     all_labels = []
     all_preds = []
+    batch_time = AverageMeter('Time', ':6.3f')
+    ce_loss_all = AverageMeter('CE_Loss', ':.4e')
+    top1 = AverageMeter('Acc@1', ':6.2f')
+
+    total_logits = torch.empty((0, config.sampling.num_class)).cuda()
+    total_labels = torch.empty(0, dtype=torch.long).cuda()
 
     with torch.no_grad():
+        end = time.time()
         for images, labels, img_names in val_loader:
             images, labels = images.to(device), labels.to(device)
 
-            outputs = model(images)
+            _, ce_logits, _ = model(images)
+            logits = ce_logits
 
-            if config.training_contrastive.architecture_type == 'vit_pretrained':
-                preds = outputs.logits.argmax(dim=-1)
-            else:
-                _, preds = torch.max(outputs, 1)
+            total_logits = torch.cat((total_logits, logits))
+            total_labels = torch.cat((total_labels, labels))
 
-            all_labels.extend(labels.cpu().numpy())
-            all_preds.extend(preds.cpu().numpy())
+            batch_time.update(time.time() - end)
 
+            probs, preds = F.softmax(logits, dim=1).max(dim=1)
             save_image = False
             if save_image:
                 for i in range(len(preds)):
@@ -362,15 +386,45 @@ def train_contrastive(config_path, input_path, output_path):
                     input_path = os.path.join(val_loader.dataset.root_dir, image_name)
                     shutil.copy(input_path, image_path)
 
+        total_logits_list = [torch.zeros_like(total_logits) for _ in range(world_size)]
+        total_labels_list = [torch.zeros_like(total_labels) for _ in range(world_size)]
+
+        dist.all_gather(total_logits_list, total_logits)
+        dist.all_gather(total_labels_list, total_labels)
+
+        total_logits = torch.cat(total_logits_list, dim=0)
+        total_labels = torch.cat(total_labels_list, dim=0)
+
+        ce_loss = criterion_ce(total_logits, total_labels)
+        acc1 = accuracy(total_logits, total_labels, topk=(1,))
+
+        ce_loss_all.update(ce_loss.item(), 1)
+        top1.update(acc1[0].item(), 1)
+
+        # if tf_writer is not None:
+        #     tf_writer.add_scalar('CE loss/val', ce_loss_all.avg, epoch)
+        #     tf_writer.add_scalar('acc/val_top1', top1.avg, epoch)
+
+        all_probs, all_preds = F.softmax(total_logits, dim=1).max(dim=1)
+        many_acc_top1, median_acc_top1, low_acc_top1 = shot_acc(all_preds, total_labels, train_loader, acc_per_cls=False)
+        acc1 = top1.avg
+        many = many_acc_top1*100
+        med = median_acc_top1*100
+        few = low_acc_top1*100
+        print('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+
+    total_labels = total_labels.cpu().numpy()
+    all_preds = all_preds.cpu().numpy()
+
     report = classification_report(
-        all_labels,
+        total_labels,
         all_preds,
         target_names=train_dataset.label_to_int,
         digits=6,
     )
 
     conf_mtx = confusion_matrix(
-        all_labels,
+        total_labels,
         all_preds,
     )
 
@@ -385,7 +439,6 @@ def train_contrastive(config_path, input_path, output_path):
     console.info('************* Evaluation Report *************')
     console.info(report)
     console.save_log(training_path)
-
 
 
 class AverageMeter(object):
@@ -412,6 +465,21 @@ class AverageMeter(object):
         fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
         return fmtstr.format(**self.__dict__)
 
+
+def adjust_lr(optimizer, epoch, config):
+    """Decay the learning rate based on schedule"""
+    lr = config.training_contrastive.learning_rate
+    cos = False
+    if epoch < config.training_contrastive.warmup_epochs:
+        lr = lr / config.training_contrastive.warmup_epochs  * (epoch + 1)
+    elif cos:  # cosine lr schedule
+        lr *= 0.5 * (1. + math.cos(math.pi * (epoch - config.training_contrastive.warmup_epochs + 1) /
+                                   (config.training_contrastive.num_epoch - config.training_contrastive.warmup_epochs + 1)))
+    else:  # stepwise lr schedule
+        for milestone in config.training_contrastive.schedule:
+            lr *= 0.1 if epoch >= milestone else 1.
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 def accuracy(output, target, topk=(1,)):
