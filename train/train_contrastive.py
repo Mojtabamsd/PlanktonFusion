@@ -400,7 +400,8 @@ def train_contrastive(config_path, input_path, output_path):
         many = many_acc_top1*100
         med = median_acc_top1*100
         few = low_acc_top1*100
-        print('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+        # print('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+        console.info('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
 
     total_labels = total_labels.cpu().numpy()
     all_preds = all_preds.cpu().numpy()
