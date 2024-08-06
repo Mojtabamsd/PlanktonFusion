@@ -254,6 +254,26 @@ def _resnet(
     return model
 
 
+def resnet18(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+    """ResNet-18 model from
+    "Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], **kwargs)
+
+
+def resnet34(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+    """ResNet-34 model from
+    "Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], **kwargs)
+
+
 def resnet50(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
@@ -279,8 +299,11 @@ def resnext50(pretrained: bool = False, progress: bool = True, **kwargs: Any) ->
 
 model_dict = {
     'resnet50': [resnet50, 2048],
-    'resnext50': [resnext50, 2048]
+    'resnext50': [resnext50, 2048],
+    'resnet18': [resnet18, 512],  # 512 comes from 512 * BasicBlock.expansion (1)
+    'resnet34': [resnet34, 512]
 }
+
 
 class Model(nn.Module):
     def __init__(self, num_classes=1000, name='resnet50', head='mlp', use_norm=True, gray=False, feat_dim=1024):

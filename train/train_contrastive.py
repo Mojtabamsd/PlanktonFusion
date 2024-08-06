@@ -5,20 +5,18 @@ from pathlib import Path
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
-from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
+from models.classifier_cnn import count_parameters
 from models import resnext
 import math
 import os
 import shutil
 import torch
-import torch.nn as nn
 import torch.distributed as dist
-from tools.utils import report_to_df, plot_loss, memory_usage, shot_acc
+from tools.utils import report_to_df, plot_loss, shot_acc
 from tools.randaugment import rand_augment_transform
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
-from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomAffine, RandomResizedCrop, \
-    ColorJitter, RandomGrayscale, RandomPerspective, RandomVerticalFlip
+from torchvision.transforms import RandomHorizontalFlip,  RandomResizedCrop
 from tools.augmentation import ResizeAndPad
 from models.loss import LogitAdjust
 from models.proco import ProCoLoss
@@ -161,20 +159,10 @@ def train_contrastive(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    if config.training_contrastive.architecture_type == 'resnet50':
-        model = resnext.Model(name='resnet50', num_classes=config.sampling.num_class,
-                              feat_dim=config.training_contrastive.feat_dim,
-                              use_norm=config.training_contrastive.use_norm,
-                              gray=config.training_contrastive.gray)
-
-    elif config.training_contrastive.architecture_type == 'resnext50':
-        model = resnext.Model(name='resnext50', num_classes=config.sampling.num_class,
-                              feat_dim=config.training_contrastive.feat_dim,
-                              use_norm=config.training_contrastive.use_norm,
-                              gray=config.training_contrastive.gray)
-
-    else:
-        console.quit("Please select correct parameter for architecture_type")
+    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_class,
+                          feat_dim=config.training_contrastive.feat_dim,
+                          use_norm=config.training_contrastive.use_norm,
+                          gray=config.training_contrastive.gray)
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
