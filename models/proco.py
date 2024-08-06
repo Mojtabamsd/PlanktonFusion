@@ -137,11 +137,11 @@ class EstimatorCV():
         self.logc = torch.log(tem+1e-300) + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-300)
 
 
-        if torch.cuda.is_available():
-            self.Ave = self.Ave.cuda()
-            self.Amount = self.Amount.cuda()
-            self.kappa = self.kappa.cuda()
-            self.logc = self.logc.cuda()
+        # if torch.cuda.is_available():
+        #     self.Ave = self.Ave.cuda()
+        #     self.Amount = self.Amount.cuda()
+        #     self.kappa = self.kappa.cuda()
+        #     self.logc = self.logc.cuda()
 
     def reset(self):
         device = self.Ave.device  # Get the device from the attribute
@@ -151,11 +151,11 @@ class EstimatorCV():
         tem = torch.from_numpy(ive(self.feature_num / 2 - 1, self.kappa.cpu().numpy().astype(np.float64))).to(device)
         self.logc = torch.log(tem+1e-300) + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-300)
 
-        if torch.cuda.is_available():
-            self.Ave = self.Ave.cuda()
-            self.Amount = self.Amount.cuda()
-            self.kappa = self.kappa.cuda()
-            self.logc = self.logc.cuda()
+        # if torch.cuda.is_available():
+        #     self.Ave = self.Ave.cuda()
+        #     self.Amount = self.Amount.cuda()
+        #     self.kappa = self.kappa.cuda()
+        #     self.logc = self.logc.cuda()
 
     def reload_memory(self):
         device = self.Ave.device
@@ -166,6 +166,13 @@ class EstimatorCV():
  
     def update_CV(self, features, labels):
         device = features.device
+
+        self.Ave = self.Ave.to(device)
+        self.Amount = self.Amount.to(device)
+        self.kappa = self.kappa.to(device)
+        self.logc = self.logc.to(device)
+
+
         N = features.size(0)
         C = self.class_num
         A = features.size(1)
@@ -194,7 +201,7 @@ class EstimatorCV():
 
         weight_AV = sum_weight_AV.div(
             sum_weight_AV + self.Amount.view(C, 1).expand(C, A)
-        )
+        ).to(device)
         weight_AV[weight_AV != weight_AV] = 0
 
 
@@ -210,7 +217,9 @@ class EstimatorCV():
         self.kappa[self.kappa < 0] = 1e5
 
 
-        nu, _ = miller_recurrence(torch.tensor(self.feature_num/2 - 1).int(), self.kappa.double())
+        nu, _ = miller_recurrence(torch.tensor(self.feature_num / 2 - 1).int().to(self.kappa.device),
+                                  self.kappa.double())
+
 
         self.logc = nu + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-20)
  
