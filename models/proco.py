@@ -9,8 +9,9 @@ import numpy as np
 import torch.distributed as dist
 
 def miller_recurrence(nu, x):
-    I_n = torch.ones(1, dtype=torch.float64).cuda()
-    I_n1 = torch.zeros(1, dtype=torch.float64).cuda()
+    device = x.device
+    I_n = torch.ones(1, dtype=torch.float64).to(device)
+    I_n1 = torch.zeros(1, dtype=torch.float64).to(device)
 
 
 
@@ -41,7 +42,7 @@ def miller_recurrence(nu, x):
         elif i == (nu+1):
             Estimat_n[1] = I_n1
 
-    ive0 = torch.special.i0e(x.cuda())
+    ive0 = torch.special.i0e(x)
 
 
     Estimat_n[0] = torch.log(ive0) + torch.log(Estimat_n[0]) - torch.log(I_n) + scale0 - scale
@@ -143,11 +144,13 @@ class EstimatorCV():
             self.logc = self.logc.cuda()
 
     def reset(self):
-        self.Ave = F.normalize(torch.randn(self.class_num, self.feature_num), dim=1) * 0.9
-        self.Amount = torch.zeros(self.class_num)
-        self.kappa = torch.ones(self.class_num) * self.feature_num * 90 / 19
-        tem = torch.from_numpy(ive(self.feature_num/2 - 1, self.kappa.cpu().numpy().astype(np.float64))).to(self.kappa.device)
+        device = self.Ave.device  # Get the device from the attribute
+        self.Ave = F.normalize(torch.randn(self.class_num, self.feature_num, device=device), dim=1) * 0.9
+        self.Amount = torch.zeros(self.class_num, device=device)
+        self.kappa = torch.ones(self.class_num, device=device) * self.feature_num * 90 / 19
+        tem = torch.from_numpy(ive(self.feature_num / 2 - 1, self.kappa.cpu().numpy().astype(np.float64))).to(device)
         self.logc = torch.log(tem+1e-300) + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-300)
+
         if torch.cuda.is_available():
             self.Ave = self.Ave.cuda()
             self.Amount = self.Amount.cuda()
@@ -155,13 +158,14 @@ class EstimatorCV():
             self.logc = self.logc.cuda()
 
     def reload_memory(self):
-        if torch.cuda.is_available():
-            self.Ave = self.Ave.cuda()
-            self.Amount = self.Amount.cuda()
-            self.kappa = self.kappa.cuda()
-            self.logc = self.logc.cuda()
+        device = self.Ave.device
+        self.Ave = self.Ave.to(device)
+        self.Amount = self.Amount.to(device)
+        self.kappa = self.kappa.to(device)
+        self.logc = self.logc.to(device)
  
     def update_CV(self, features, labels):
+        device = features.device
         N = features.size(0)
         C = self.class_num
         A = features.size(1)
@@ -171,11 +175,7 @@ class EstimatorCV():
         ).expand(
             N, C, A
         )
-
-        onehot = torch.zeros(N, C)
-        if torch.cuda.is_available():
-            onehot = onehot.cuda()
-
+        onehot = torch.zeros(N, C, device=device)
 
         onehot.scatter_(1, labels.view(-1, 1), 1)
 
@@ -229,7 +229,7 @@ class ProCoLoss(nn.Module):
         cls_num_list = torch.Tensor(cls_num_list).view(1, self.num_classes)
         self.weight = cls_num_list / cls_num_list.sum()
         if torch.cuda.is_available():
-            self.weight = self.weight.to(torch.device('cuda'))
+            self.weight = self.weight.to(self.weight.device)
 
     def reload_memory(self):
 
@@ -254,6 +254,7 @@ class ProCoLoss(nn.Module):
     def forward(self, features, labels=None, sup_logits=None, world_size=1):
         batch_size = features.size(0)
         N = batch_size
+        device = features.device
 
         if labels is not None:
 
