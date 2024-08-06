@@ -261,9 +261,9 @@ def train_contrastive(config_path, input_path, output_path):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            # for debug
-            from tools.image import save_img
-            save_img(images, batch_idx, epoch, training_path/"augmented")
+            # # for debug
+            # from tools.image import save_img
+            # save_img(images, batch_idx, epoch, training_path/"augmented")
 
             if batch_idx % 20 == 0:
                 output = ('Epoch: [{0}][{1}/{2}] \t'
