@@ -193,7 +193,8 @@ def train_contrastive(config_path, input_path, output_path):
         criterion_ce = LogitAdjust(class_counts).to(device)
         criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
                                   temperature=config.training_contrastive.temp,
-                                  num_classes=config.sampling.num_class).to(device)
+                                  num_classes=config.sampling.num_class,
+                                  device=device).to(device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
@@ -239,6 +240,8 @@ def train_contrastive(config_path, input_path, output_path):
 
             contrast_logits1 = criterion_scl(f2, labels)
             contrast_logits2 = criterion_scl(f3, labels)
+            contrast_logits1, contrast_logits2 = contrast_logits1.to(device), contrast_logits2.to(device)
+
             contrast_logits = (contrast_logits1 + contrast_logits2) / 2
 
             scl_loss = (criterion_ce(contrast_logits1, labels) + criterion_ce(contrast_logits2, labels)) / 2

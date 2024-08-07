@@ -125,23 +125,22 @@ class LogRatioC(torch.autograd.Function):
 
 
 class EstimatorCV():
-    def __init__(self, feature_num, class_num):
+    def __init__(self, feature_num, class_num, device):
         super(EstimatorCV, self).__init__()
 
         self.class_num = class_num
         self.feature_num = feature_num
+        self.device = device
         self.Ave = F.normalize(torch.randn(class_num, feature_num), dim=1) * 0.9
         self.Amount = torch.zeros(class_num)
         self.kappa = torch.ones(class_num) * self.feature_num * 90 / 19
         tem = torch.from_numpy(ive(self.feature_num/2 - 1, self.kappa.cpu().numpy().astype(np.float64))).to(self.kappa.device)
         self.logc = torch.log(tem+1e-300) + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-300)
 
-
-        # if torch.cuda.is_available():
-        #     self.Ave = self.Ave.cuda()
-        #     self.Amount = self.Amount.cuda()
-        #     self.kappa = self.kappa.cuda()
-        #     self.logc = self.logc.cuda()
+        self.Ave = self.Ave.to(self.device)
+        self.Amount = self.Amount.to(self.device)
+        self.kappa = self.kappa.to(self.device)
+        self.logc = self.logc.to(self.device)
 
     def reset(self):
         device = self.Ave.device  # Get the device from the attribute
@@ -226,13 +225,14 @@ class EstimatorCV():
 
 
 class ProCoLoss(nn.Module):
-    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000):
+    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0'):
         super(ProCoLoss, self).__init__()
         self.temperature = temperature
         self.num_classes = num_classes
         self.feature_num = contrast_dim
-        self.estimator_old = EstimatorCV(self.feature_num, num_classes)
-        self.estimator = EstimatorCV(self.feature_num, num_classes)
+        self.device = device
+        self.estimator_old = EstimatorCV(self.feature_num, num_classes, self.device)
+        self.estimator = EstimatorCV(self.feature_num, num_classes, self.device)
 
     def cal_weight_for_classes(self, cls_num_list):
         cls_num_list = torch.Tensor(cls_num_list).view(1, self.num_classes)
