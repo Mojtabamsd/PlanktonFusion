@@ -362,8 +362,8 @@ def train_uvp(config, console):
     ce_loss_all = AverageMeter('CE_Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
 
-    total_logits = torch.empty((0, config.sampling.num_class)).cuda()
-    total_labels = torch.empty(0, dtype=torch.long).cuda()
+    total_logits = torch.empty((0, config.sampling.num_class)).to(device)
+    total_labels = torch.empty(0, dtype=torch.long).to(device)
 
     with torch.no_grad():
         end = time.time()
