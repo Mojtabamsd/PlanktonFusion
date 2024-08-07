@@ -92,10 +92,9 @@ def train_contrastive(config_path, input_path, output_path):
     multiprocessing_distributed = True
     dist.init_process_group(backend='gloo', init_method='env://', world_size=config.world_size, rank=rank)
 
-
-    if config.training_contrastive.data_type == 'uvp':
+    if config.training_contrastive.dataset == 'uvp':
         train_uvp(config, console)
-    # elif config.training_contrastive.data_type == 'imagenet':
+    # elif config.training_contrastive.dataset == 'imagenet':
     #     train_imagenet(config)
 
 
@@ -445,6 +444,7 @@ def train_uvp(config, console):
     console.info('************* Evaluation Report *************')
     console.info(report)
     console.save_log(config.training_path)
+
 
 
 class AverageMeter(object):
