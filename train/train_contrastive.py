@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
 from models import resnext
+from dataset.imagenet import ImageNetLT
 import math
 import os
 import shutil
@@ -29,6 +30,8 @@ def train_contrastive(config_path, input_path, output_path):
     config = Configuration(config_path, input_path, output_path)
     config.phase = 'train'      # will train with whole dataset and testing results if there is a test file
     # phase = 'train_val'  # will train with 80% dataset and testing results with the rest 20% of data
+
+    config.input_path = input_path
 
     # Create output directory
     input_folder = Path(input_path)
@@ -94,8 +97,8 @@ def train_contrastive(config_path, input_path, output_path):
 
     if config.training_contrastive.dataset == 'uvp':
         train_uvp(config, console)
-    # elif config.training_contrastive.dataset == 'imagenet':
-    #     train_imagenet(config)
+    elif config.training_contrastive.dataset == 'imagenet':
+        train_imagenet(config, console)
 
 
 def train_uvp(config, console):
@@ -445,6 +448,361 @@ def train_uvp(config, console):
     console.info(report)
     console.save_log(config.training_path)
 
+
+def train_imagenet(config, console):
+
+    # number of classes for imagenet
+    config.sampling.num_classes = 1000
+
+    txt_train = f'dataset/ImageNet_LT/ImageNet_LT_train.txt'
+    txt_val = f'dataset/ImageNet_LT/ImageNet_LT_val.txt'
+    normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+
+    # Define data transformations
+    randaug_m = 10
+    randaug_n = 2
+    cl_views = 'sim-sim'
+    rgb_mean = (0.485, 0.456, 0.406)
+    ra_params = dict(translate_const=int(224 * 0.45), img_mean=tuple([min(255, round(255 * x)) for x in rgb_mean]), )
+    augmentation_randncls = [
+        transforms.RandomResizedCrop(224, scale=(0.08, 1.)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.0)
+        ], p=1.0),
+        rand_augment_transform('rand-n{}-m{}-mstd0.5'.format(randaug_n, randaug_m), ra_params),
+        transforms.ToTensor(),
+        normalize,
+    ]
+    augmentation_randnclsstack = [
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        rand_augment_transform('rand-n{}-m{}-mstd0.5'.format(randaug_n, randaug_m), ra_params),
+        transforms.ToTensor(),
+        normalize,
+    ]
+    augmentation_sim = [
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        normalize
+    ]
+    if cl_views == 'sim-sim':
+        transform_train = [transforms.Compose(augmentation_randncls), transforms.Compose(augmentation_sim),
+                           transforms.Compose(augmentation_sim), ]
+    elif cl_views == 'sim-rand':
+        transform_train = [transforms.Compose(augmentation_randncls), transforms.Compose(augmentation_randnclsstack),
+                           transforms.Compose(augmentation_sim), ]
+    elif cl_views == 'rand-rand':
+        transform_train = [transforms.Compose(augmentation_randncls), transforms.Compose(augmentation_randnclsstack),
+                           transforms.Compose(augmentation_randnclsstack), ]
+    else:
+        raise NotImplementedError("This augmentations strategy is not available for contrastive learning branch!")
+    val_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    config.input_path = ''
+    val_dataset = ImageNetLT(
+        root=config.input_path,
+        txt=txt_val,
+        transform=val_transform, train=False)
+
+    train_dataset = ImageNetLT(
+        root=config.input_path,
+        txt=txt_train,
+        transform=transform_train)
+
+    console.info(f'===> Training data length {len(train_dataset)}')
+    console.info(f'===> Validation data length {len(val_dataset)}')
+
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=config.training_contrastive.batch_size, shuffle=(train_sampler is None),
+        num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
+        num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=val_sampler)
+
+    device = torch.device(f'cuda:{config.base.gpu_index}' if
+                          torch.cuda.is_available() and config.base.cpu is False else 'cpu')
+    console.info(f"Running on:  {device}")
+
+    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_class,
+                          feat_dim=config.training_contrastive.feat_dim,
+                          use_norm=config.training_contrastive.use_norm,
+                          gray=config.training_contrastive.gray)
+
+    # Calculate the number of parameters in millions
+    num_params = count_parameters(model) / 1_000_000
+    console.info(f"The model has approximately {num_params:.2f} million parameters.")
+
+    model.to(device)
+
+    # test memory usage
+    # console.info(memory_usage(config, model, device))
+
+    if config.training_contrastive.path_pretrain:
+        pth_files = [file for file in os.listdir(config.training_path) if
+                     file.endswith('.pth') and file != 'model_weights_final.pth']
+        epochs = [int(file.split('_')[-1].split('.')[0]) for file in pth_files]
+        latest_epoch = max(epochs)
+        latest_pth_file = f"model_weights_epoch_{latest_epoch}.pth"
+
+        saved_weights_file = os.path.join(config.training_path, latest_pth_file)
+
+        console.info("Model loaded from ", saved_weights_file)
+        model.load_state_dict(torch.load(saved_weights_file, map_location=device))
+        model.to(device)
+    else:
+        latest_epoch = 0
+
+    # Loss criterion and optimizer
+    cls_num_list = train_dataset.cls_num_list
+    config.cls_num = len(cls_num_list)
+
+    if config.training_contrastive.loss == 'proco':
+        criterion_ce = LogitAdjust(cls_num_list, device=device)
+        criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                  temperature=config.training_contrastive.temp,
+                                  num_classes=config.sampling.num_class,
+                                  device=device)
+
+    optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
+                                momentum=config.training_contrastive.momentum,
+                                weight_decay=config.training_contrastive.weight_decay)
+
+    if config.training_contrastive.num_epoch == 200:
+        config.training_contrastive.schedule = [160, 180]
+        config.training_contrastive.warmup_epochs = 5
+    elif config.training_contrastive.num_epoch == 400:
+        config.training_contrastive.schedule = [360, 380]
+        config.training_contrastive.warmup_epochs = 10
+    else:
+        config.training_contrastive.schedule = [config.training_contrastive.num_epoch * 0.8, config.training_contrastive.num_epoch * 0.9]
+        config.training_contrastive.warmup_epochs = 5 * config.training_contrastive.num_epoch // 200
+
+    ce_loss_all_avg = []
+    scl_loss_all_avg = []
+    top1_avg = []
+
+    # Training loop
+    for epoch in range(latest_epoch, config.training_contrastive.num_epoch):
+        model.train()
+        running_loss = 0.0
+        running_corrects = 0
+
+        adjust_lr(optimizer, epoch, config)
+
+        batch_time = AverageMeter('Time', ':6.3f')
+        ce_loss_all = AverageMeter('CE_Loss', ':.4e')
+        scl_loss_all = AverageMeter('SCL_Loss', ':.4e')
+        top1 = AverageMeter('Acc@1', ':6.2f')
+
+        end = time.time()
+
+        for batch_idx, (images, labels, _) in enumerate(train_loader):
+            images = torch.cat([images[0], images[1], images[2]], dim=0)
+            images, labels = images.to(device), labels.to(device)
+            batch_size = labels.shape[0]
+
+            feat_mlp, ce_logits, _ = model(images)
+            _, f2, f3 = torch.split(feat_mlp, [batch_size, batch_size, batch_size], dim=0)
+            ce_logits, _, __ = torch.split(ce_logits, [batch_size, batch_size, batch_size], dim=0)
+
+            contrast_logits1 = criterion_scl(f2, labels)
+            contrast_logits2 = criterion_scl(f3, labels)
+            contrast_logits1, contrast_logits2 = contrast_logits1.to(device), contrast_logits2.to(device)
+
+            contrast_logits = (contrast_logits1 + contrast_logits2) / 2
+
+            scl_loss = (criterion_ce(contrast_logits1, labels) + criterion_ce(contrast_logits2, labels)) / 2
+            ce_loss = criterion_ce(ce_logits, labels)
+
+            alpha = 1
+            logits = ce_logits + alpha * contrast_logits
+            loss = ce_loss + alpha * scl_loss
+
+            ce_loss_all.update(ce_loss.item(), batch_size)
+            scl_loss_all.update(scl_loss.item(), batch_size)
+
+            acc1 = accuracy(logits, labels, topk=(1,))
+            top1.update(acc1[0].item(), batch_size)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            # # for debug
+            # from tools.image import save_img
+            # save_img(images, batch_idx, epoch, training_path/"augmented")
+
+            if batch_idx % 20 == 0:
+                output = ('Epoch: [{0}][{1}/{2}] \t'
+                          'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                          'CE_Loss {ce_loss.val:.4f} ({ce_loss.avg:.4f})\t'
+                          'SCL_Loss {scl_loss.val:.4f} ({scl_loss.avg:.4f})\t'
+                          'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
+                    epoch, batch_idx, len(train_loader), batch_time=batch_time,
+                    ce_loss=ce_loss_all, scl_loss=scl_loss_all, top1=top1, ))  # TODO
+                print(output)
+
+        console.info(f"CE loss train [{epoch + 1}/{config.training_contrastive.num_epoch}] - Loss: {ce_loss_all.avg:.4f} ")
+        console.info(f"SCL loss train [{epoch + 1}/{config.training_contrastive.num_epoch}] - Loss: {scl_loss_all.avg:.4f} ")
+        console.info(f"acc train top1 [{epoch + 1}/{config.training_contrastive.num_epoch}] - Acc: {top1.avg:.4f} ")
+
+        ce_loss_all_avg.append(ce_loss_all.avg)
+        scl_loss_all_avg.append(scl_loss_all.avg)
+        top1_avg.append(top1.avg)
+
+        plot_loss(ce_loss_all_avg, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='CE_loss.png')
+        plot_loss(scl_loss_all_avg, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='SCL_loss.png')
+        plot_loss(top1_avg, num_epoch=(epoch - latest_epoch) + 1, training_path=config.training_path, name='ACC.png')
+
+        # save intermediate weight
+        if (epoch + 1) % config.training_contrastive.save_model_every_n_epoch == 0:
+            # Save the model weights
+            saved_weights = f'model_weights_epoch_{epoch + 1}.pth'
+            saved_weights_file = os.path.join(config.training_path, saved_weights)
+
+            console.info(f"Model weights saved to {saved_weights_file}")
+            torch.save(model.state_dict(), saved_weights_file)
+
+    # Create a plot of the loss values
+    plot_loss(ce_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
+    plot_loss(scl_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='SCL_loss.png')
+    plot_loss(top1_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='ACC.png')
+
+    # Save the model's state dictionary to a file
+    saved_weights = "model_weights_final.pth"
+    saved_weights_file = os.path.join(config.training_path, saved_weights)
+
+    torch.save(model.state_dict(), saved_weights_file)
+
+    console.info(f"Final model weights saved to {saved_weights_file}")
+
+    txt_test = f'dataset/ImageNet_LT/ImageNet_LT_test.txt'
+    test_dataset = ImageNetLT(
+        root=config.input_path,
+        txt=txt_test,
+        transform=val_transform, train=False)
+
+    test_sampler = torch.utils.data.distributed.DistributedSampler(test_dataset)
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
+        num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=test_sampler)
+
+    # Evaluation loop
+    model.eval()
+    all_labels = []
+    all_preds = []
+    batch_time = AverageMeter('Time', ':6.3f')
+    ce_loss_all = AverageMeter('CE_Loss', ':.4e')
+    top1 = AverageMeter('Acc@1', ':6.2f')
+
+    total_logits = torch.empty((0, config.sampling.num_class)).cuda()
+    total_labels = torch.empty(0, dtype=torch.long).cuda()
+
+    with torch.no_grad():
+        end = time.time()
+        for images, labels, img_names in test_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            _, ce_logits, _ = model(images)
+            logits = ce_logits
+
+            total_logits = torch.cat((total_logits, logits))
+            total_labels = torch.cat((total_labels, labels))
+
+            batch_time.update(time.time() - end)
+
+            probs, preds = F.softmax(logits, dim=1).max(dim=1)
+            save_image = False
+            if save_image:
+                for i in range(len(preds)):
+                    int_label = preds[i].item()
+                    string_label = test_loader.dataset.get_string_label(int_label)
+                    image_name = img_names[i]
+                    image_path = os.path.join(config.training_path, 'output/', string_label, image_name.replace('output/', ''))
+
+                    if not os.path.exists(os.path.dirname(image_path)):
+                        os.makedirs(os.path.dirname(image_path))
+
+                    input_path = os.path.join(val_loader.dataset.root_dir, image_name)
+                    shutil.copy(input_path, image_path)
+
+        total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
+        total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
+
+        dist.all_gather(total_logits_list, total_logits)
+        dist.all_gather(total_labels_list, total_labels)
+
+        total_logits = torch.cat(total_logits_list, dim=0)
+        total_labels = torch.cat(total_labels_list, dim=0)
+
+        ce_loss = criterion_ce(total_logits, total_labels)
+        acc1 = accuracy(total_logits, total_labels, topk=(1,))
+
+        ce_loss_all.update(ce_loss.item(), 1)
+        top1.update(acc1[0].item(), 1)
+
+        # if tf_writer is not None:
+        #     tf_writer.add_scalar('CE loss/val', ce_loss_all.avg, epoch)
+        #     tf_writer.add_scalar('acc/val_top1', top1.avg, epoch)
+
+        all_probs, all_preds = F.softmax(total_logits, dim=1).max(dim=1)
+        many_acc_top1, median_acc_top1, low_acc_top1 = shot_acc(all_preds, total_labels, train_loader, acc_per_cls=False)
+        acc1 = top1.avg
+        many = many_acc_top1*100
+        med = median_acc_top1*100
+        few = low_acc_top1*100
+        # print('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+        console.info('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+
+    total_labels = total_labels.cpu().numpy()
+    all_preds = all_preds.cpu().numpy()
+
+    report = classification_report(
+        total_labels,
+        all_preds,
+        target_names=train_dataset.label_to_int,
+        digits=6,
+    )
+
+    conf_mtx = confusion_matrix(
+        total_labels,
+        all_preds,
+    )
+
+    df = report_to_df(report)
+    report_filename = os.path.join(config.training_path, 'report_evaluation.csv')
+    df.to_csv(report_filename)
+
+    df = pd.DataFrame(conf_mtx)
+    conf_mtx_filename = os.path.join(config.training_path, 'conf_matrix_evaluation.csv')
+    df.to_csv(conf_mtx_filename)
+
+    console.info('************* Evaluation Report *************')
+    console.info(report)
+    console.save_log(config.training_path)
 
 
 class AverageMeter(object):
