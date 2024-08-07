@@ -190,11 +190,11 @@ def train_contrastive(config_path, input_path, output_path):
 
     # Loss criterion and optimizer
     if config.training_contrastive.loss == 'proco':
-        criterion_ce = LogitAdjust(class_counts).to(device)
+        criterion_ce = LogitAdjust(class_counts, device=device)
         criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
                                   temperature=config.training_contrastive.temp,
                                   num_classes=config.sampling.num_class,
-                                  device=device).to(device)
+                                  device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
