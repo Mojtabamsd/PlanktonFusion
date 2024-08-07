@@ -60,7 +60,7 @@ def train_contrastive(config_path, input_path, output_path):
         config.training_path = training_path
     else:
         time_str = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-        rel_training_path = Path("training" + time_str)
+        rel_training_path = Path("training_contrastive" + time_str)
         training_path = output_folder / rel_training_path
         config.training_path = training_path
         if not training_path.exists():

@@ -51,24 +51,30 @@ class GaussianNoise:
 
 
 class ResizeAndPad:
-    def __init__(self, target_size):
+    def __init__(self, target_size, min_size=1):
         self.target_height, self.target_width = target_size
+        self.min_size = min_size  # Minimum size to prevent zero or negative dimensions
 
     def __call__(self, img):
         # Resize the image to maintain aspect ratio
         aspect_ratio = img.width / img.height
         if img.width < img.height:
             new_height = self.target_height
-            new_width = int(new_height * aspect_ratio)
+            new_width = max(int(new_height * aspect_ratio), self.min_size)
         else:
             new_width = self.target_width
-            new_height = int(new_width / aspect_ratio)
+            new_height = max(int(new_width / aspect_ratio), self.min_size)
 
-        img = transforms.Resize((new_height, new_width))(img)
+        try:
+            img = transforms.Resize((new_height, new_width))(img)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            print(f"Attempted resize with dimensions (width, height): {new_height}x{new_width}")
+            print(f"Original image size (width, height): {img.width}x{img.height}")
 
         # Calculate padding needed
-        pad_height = (self.target_height - new_height + 1) // 2 if new_height < self.target_height else 0
-        pad_width = (self.target_width - new_width + 1) // 2 if new_width < self.target_width else 0
+        pad_height = max((self.target_height - new_height) // 2, 0)
+        pad_width = max((self.target_width - new_width) // 2, 0)
 
         # Pad the image to ensure it's exactly the target size
         img = transforms.Pad((pad_width, pad_height), fill=0, padding_mode='constant')(img)
