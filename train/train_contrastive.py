@@ -147,13 +147,14 @@ def train_contrastive(config_path, input_path, output_path):
                                                          replacement=True)
         train_loader = DataLoader(train_dataset,
                                   batch_size=config.training_contrastive.batch_size,
-                                  sampler=sampler)
+                                  sampler=sampler,
+                                  num_workers=config.training_contrastive.num_workers)
 
     else:
         train_loader = DataLoader(train_dataset,
                                   batch_size=config.training_contrastive.batch_size,
                                   shuffle=True,
-                                  num_workers=4)
+                                  num_workers=config.training_contrastive.num_workers)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
@@ -335,7 +336,7 @@ def train_contrastive(config_path, input_path, output_path):
         val_loader = DataLoader(test_dataset,
                                 batch_size=config.classifier.batch_size,
                                 shuffle=True,
-                                num_workers=4)
+                                num_workers=config.training_contrastive.num_workers)
     else:
         console.quit('no data for testing model')
 
