@@ -27,7 +27,7 @@ import torch.nn.functional as F
 def train_contrastive(config_path, input_path, output_path):
 
     config = Configuration(config_path, input_path, output_path)
-    phase = 'train'      # will train with whole dataset and testing results if there is a test file
+    config.phase = 'train'      # will train with whole dataset and testing results if there is a test file
     # phase = 'train_val'  # will train with 80% dataset and testing results with the rest 20% of data
 
     # Create output directory
@@ -44,6 +44,8 @@ def train_contrastive(config_path, input_path, output_path):
     input_csv_train = input_folder_train / sampled_images_csv_filename
     input_csv_test = input_folder_test / sampled_images_csv_filename
 
+    config.input_folder_train = str(input_folder_train)
+    config.input_folder_test = str(input_folder_test)
     config.input_csv_train = str(input_csv_train)
     config.input_csv_test = str(input_csv_test)
 
@@ -73,6 +75,8 @@ def train_contrastive(config_path, input_path, output_path):
     output_config_filename = training_path / "config.yaml"
     config.write(output_config_filename)
 
+    config.training_path = str(training_path)
+
     # parallel processing
     os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
     os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '12345')
@@ -80,14 +84,22 @@ def train_contrastive(config_path, input_path, output_path):
     os.environ['RANK'] = os.getenv('RANK', '0')
     os.environ['LOCAL_RANK'] = os.getenv('LOCAL_RANK', '0')
 
-    world_size = int(os.environ["WORLD_SIZE"])
+    config.world_size = int(os.environ["WORLD_SIZE"])
     rank = int(os.environ["RANK"])
     gpu = int(os.environ["LOCAL_RANK"])
 
     distributed = True
     multiprocessing_distributed = True
-    dist.init_process_group(backend='gloo', init_method='env://', world_size=world_size, rank=rank)
+    dist.init_process_group(backend='gloo', init_method='env://', world_size=config.world_size, rank=rank)
 
+
+    if config.training_contrastive.data_type == 'uvp':
+        train_uvp(config, console)
+    # elif config.training_contrastive.data_type == 'imagenet':
+    #     train_imagenet(config)
+
+
+def train_uvp(config, console):
     # Define data transformations
     randaug_m = 10
     randaug_n = 2
@@ -126,11 +138,11 @@ def train_contrastive(config_path, input_path, output_path):
         ])
 
     # Create uvp dataset datasets for training and validation
-    train_dataset = UvpDataset(root_dir=input_folder_train,
+    train_dataset = UvpDataset(root_dir=config.input_folder_train,
                                num_class=config.sampling.num_class,
-                               csv_file=input_csv_train,
+                               csv_file=config.input_csv_train,
                                transform=transform_train,
-                               phase=phase,
+                               phase=config.phase,
                                gray=config.training_contrastive.gray)
 
     class_counts = train_dataset.data_frame['label'].value_counts().sort_index().tolist()
@@ -175,13 +187,13 @@ def train_contrastive(config_path, input_path, output_path):
     # console.info(memory_usage(config, model, device))
 
     if config.training_contrastive.path_pretrain:
-        pth_files = [file for file in os.listdir(training_path) if
+        pth_files = [file for file in os.listdir(config.training_path) if
                      file.endswith('.pth') and file != 'model_weights_final.pth']
         epochs = [int(file.split('_')[-1].split('.')[0]) for file in pth_files]
         latest_epoch = max(epochs)
         latest_pth_file = f"model_weights_epoch_{latest_epoch}.pth"
 
-        saved_weights_file = training_path / latest_pth_file
+        saved_weights_file = os.path.join(config.training_path, latest_pth_file)
 
         console.info("Model loaded from ", saved_weights_file)
         model.load_state_dict(torch.load(saved_weights_file, map_location=device))
@@ -295,7 +307,7 @@ def train_contrastive(config_path, input_path, output_path):
         if (epoch + 1) % config.training_contrastive.save_model_every_n_epoch == 0:
             # Save the model weights
             saved_weights = f'model_weights_epoch_{epoch + 1}.pth'
-            saved_weights_file = training_path / saved_weights
+            saved_weights_file = os.path.join(config.training_path, saved_weights)
 
             console.info(f"Model weights saved to {saved_weights_file}")
             torch.save(model.state_dict(), saved_weights_file)
@@ -307,14 +319,14 @@ def train_contrastive(config_path, input_path, output_path):
 
     # Save the model's state dictionary to a file
     saved_weights = "model_weights_final.pth"
-    saved_weights_file = training_path / saved_weights
+    saved_weights_file = os.path.join(config.training_path, saved_weights)
 
     torch.save(model.state_dict(), saved_weights_file)
 
     console.info(f"Final model weights saved to {saved_weights_file}")
 
     # Create uvp dataset datasets for training and validation
-    if phase == 'train_val':
+    if config.phase == 'train_val':
         console.info('Testing model with validation subset')
         train_dataset.phase = 'val'
         val_dataset = train_dataset
@@ -323,12 +335,12 @@ def train_contrastive(config_path, input_path, output_path):
                                 batch_size=config.training_contrastive.batch_size,
                                 shuffle=True)
 
-    elif input_csv_test is not None:
+    elif config.input_csv_test is not None:
         console.info('Testing model with folder test')
 
-        test_dataset = UvpDataset(root_dir=input_folder_test,
+        test_dataset = UvpDataset(root_dir=config.input_folder_test,
                                   num_class=config.sampling.num_class,
-                                  csv_file=input_csv_test,
+                                  csv_file=config.input_csv_test,
                                   transform=transform_val,
                                   phase='test',
                                   gray=config.training_contrastive.gray)
@@ -371,7 +383,7 @@ def train_contrastive(config_path, input_path, output_path):
                     int_label = preds[i].item()
                     string_label = val_loader.dataset.get_string_label(int_label)
                     image_name = img_names[i]
-                    image_path = os.path.join(training_path, 'output/', string_label, image_name.replace('output/', ''))
+                    image_path = os.path.join(config.training_path, 'output/', string_label, image_name.replace('output/', ''))
 
                     if not os.path.exists(os.path.dirname(image_path)):
                         os.makedirs(os.path.dirname(image_path))
@@ -379,8 +391,8 @@ def train_contrastive(config_path, input_path, output_path):
                     input_path = os.path.join(val_loader.dataset.root_dir, image_name)
                     shutil.copy(input_path, image_path)
 
-        total_logits_list = [torch.zeros_like(total_logits) for _ in range(world_size)]
-        total_labels_list = [torch.zeros_like(total_labels) for _ in range(world_size)]
+        total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
+        total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
 
         dist.all_gather(total_logits_list, total_logits)
         dist.all_gather(total_labels_list, total_labels)
@@ -423,16 +435,16 @@ def train_contrastive(config_path, input_path, output_path):
     )
 
     df = report_to_df(report)
-    report_filename = training_path / 'report_evaluation.csv'
+    report_filename = os.path.join(config.training_path, 'report_evaluation.csv')
     df.to_csv(report_filename)
 
     df = pd.DataFrame(conf_mtx)
-    conf_mtx_filename = training_path / 'conf_matrix_evaluation.csv'
+    conf_mtx_filename = os.path.join(config.training_path, 'conf_matrix_evaluation.csv')
     df.to_csv(conf_mtx_filename)
 
     console.info('************* Evaluation Report *************')
     console.info(report)
-    console.save_log(training_path)
+    console.save_log(config.training_path)
 
 
 class AverageMeter(object):

@@ -33,7 +33,7 @@ def plot_loss(loss_values, num_epoch, training_path, name='loss_plot.png'):
     plt.legend()
 
     # Specify the path where you want to save the plot
-    plot_path = training_path / name
+    plot_path = os.path.join(training_path, name)
 
     # Save the plot to the specified path
     plt.savefig(plot_path)
