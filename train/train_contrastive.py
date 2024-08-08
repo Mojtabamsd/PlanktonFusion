@@ -463,9 +463,10 @@ def train_imagenet(config, console):
     randaug_n = 2
     cl_views = 'sim-sim'
     rgb_mean = (0.485, 0.456, 0.406)
-    ra_params = dict(translate_const=int(224 * 0.45), img_mean=tuple([min(255, round(255 * x)) for x in rgb_mean]), )
+    ra_params = dict(translate_const=int(config.training_contrastive.target_size[0] * 0.45),
+                     img_mean=tuple([min(255, round(255 * x)) for x in rgb_mean]), )
     augmentation_randncls = [
-        transforms.RandomResizedCrop(224, scale=(0.08, 1.)),
+        transforms.RandomResizedCrop(config.training_contrastive.target_size[0], scale=(0.08, 1.)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.0)
@@ -475,7 +476,7 @@ def train_imagenet(config, console):
         normalize,
     ]
     augmentation_randnclsstack = [
-        transforms.RandomResizedCrop(224),
+        transforms.RandomResizedCrop(config.training_contrastive.target_size[0]),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
@@ -486,7 +487,7 @@ def train_imagenet(config, console):
         normalize,
     ]
     augmentation_sim = [
-        transforms.RandomResizedCrop(224),
+        transforms.RandomResizedCrop(config.training_contrastive.target_size[0]),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
@@ -506,9 +507,9 @@ def train_imagenet(config, console):
                            transforms.Compose(augmentation_randnclsstack), ]
     else:
         raise NotImplementedError("This augmentations strategy is not available for contrastive learning branch!")
-    val_transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+    transform_val = transforms.Compose([
+        transforms.Resize(config.training_contrastive.target_size[0]),
+        transforms.CenterCrop(config.training_contrastive.target_size[0]),
         transforms.ToTensor(),
         normalize
     ])
@@ -517,7 +518,7 @@ def train_imagenet(config, console):
     val_dataset = ImageNetLT(
         root=config.input_path,
         txt=txt_val,
-        transform=val_transform, train=False)
+        transform=transform_val, train=False)
 
     train_dataset = ImageNetLT(
         root=config.input_path,
@@ -528,15 +529,15 @@ def train_imagenet(config, console):
     console.info(f'===> Validation data length {len(val_dataset)}')
 
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+    # val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=config.training_contrastive.batch_size, shuffle=(train_sampler is None),
         num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
-        num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=val_sampler)
+    # val_loader = torch.utils.data.DataLoader(
+    #     val_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
+    #     num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=val_sampler)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
@@ -702,7 +703,7 @@ def train_imagenet(config, console):
     test_dataset = ImageNetLT(
         root=config.input_path,
         txt=txt_test,
-        transform=val_transform, train=False)
+        transform=transform_val, train=False)
 
     test_sampler = torch.utils.data.distributed.DistributedSampler(test_dataset)
 
@@ -723,7 +724,8 @@ def train_imagenet(config, console):
 
     with torch.no_grad():
         end = time.time()
-        for images, labels, img_names in test_loader:
+        for i, data in enumerate(test_loader):
+            images, labels = data
             images, labels = images.to(device), labels.to(device)
 
             _, ce_logits, _ = model(images)
@@ -733,21 +735,6 @@ def train_imagenet(config, console):
             total_labels = torch.cat((total_labels, labels))
 
             batch_time.update(time.time() - end)
-
-            probs, preds = F.softmax(logits, dim=1).max(dim=1)
-            save_image = False
-            if save_image:
-                for i in range(len(preds)):
-                    int_label = preds[i].item()
-                    string_label = test_loader.dataset.get_string_label(int_label)
-                    image_name = img_names[i]
-                    image_path = os.path.join(config.training_path, 'output/', string_label, image_name.replace('output/', ''))
-
-                    if not os.path.exists(os.path.dirname(image_path)):
-                        os.makedirs(os.path.dirname(image_path))
-
-                    input_path = os.path.join(val_loader.dataset.root_dir, image_name)
-                    shutil.copy(input_path, image_path)
 
         total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
         total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
