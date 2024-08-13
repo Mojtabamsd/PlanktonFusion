@@ -91,9 +91,9 @@ def train_contrastive(config_path, input_path, output_path):
     rank = int(os.environ["RANK"])
     gpu = int(os.environ["LOCAL_RANK"])
 
-    distributed = True
-    multiprocessing_distributed = True
-    dist.init_process_group(backend='gloo', init_method='env://', world_size=config.world_size, rank=rank)
+    # distributed = True
+    # multiprocessing_distributed = True
+    # dist.init_process_group(backend='gloo', init_method='env://', world_size=config.world_size, rank=rank)
 
     if config.training_contrastive.dataset == 'uvp':
         train_uvp(config, console)

@@ -267,20 +267,21 @@ class ProCoLoss(nn.Module):
 
         if labels is not None:
 
-            total_features_list = [torch.zeros_like(features) for _ in range(world_size)]
-            total_labels_list = [torch.zeros_like(labels) for _ in range(world_size)]
+            # total_features_list = [torch.zeros_like(features) for _ in range(world_size)]
+            # total_labels_list = [torch.zeros_like(labels) for _ in range(world_size)]
+            #
+            # dist.all_gather(total_features_list, features)
+            # dist.all_gather(total_labels_list, labels)
 
-            dist.all_gather(total_features_list, features)
-            dist.all_gather(total_labels_list, labels)
+            # total_features = torch.cat(total_features_list, dim=0)
+            # total_labels = torch.cat(total_labels_list, dim=0)
 
-            total_features = torch.cat(total_features_list, dim=0)
-            total_labels = torch.cat(total_labels_list, dim=0)
-
+            total_features = features
+            total_labels = labels
 
             self.estimator_old.update_CV(total_features.detach(), total_labels)
             self.estimator.update_CV(total_features.detach(), total_labels)
             self.estimator_old.update_kappa()
-
 
         Ave = self.estimator_old.Ave.detach()
         Ave_norm = F.normalize(Ave, dim=1)
@@ -290,8 +291,6 @@ class ProCoLoss(nn.Module):
         tem = kappa.reshape(-1, 1) * Ave_norm
         tem = tem.unsqueeze(0) + features[:N].unsqueeze(1) / self.temperature
         kappa_new = torch.linalg.norm(tem, dim=2)
-
-
 
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
 
