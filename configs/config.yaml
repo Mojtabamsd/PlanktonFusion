@@ -37,14 +37,14 @@ sampling_syn:
 
 
 training:
-  architecture_type: 'resnet18' # choose 'simple_cnn' or 'resnet18' or 'mobilenet' or 'shufflenet' or 'vit_base' or 'vit_pretrained'
-  batch_size: 128
+  architecture_type: 'resnet18' # choose 'resnet18', 'resnet34', 'resnet50' or 'resnext50'
+  batch_size: 256
   gray: False
-  target_size: [32, 32]  #image target size
+  target_size: [128, 128]  #image target size
   padding: True # pad image to preserve aspect ratio
   pre_train: None # True or None
   learning_rate: 0.001
-  num_epoch: 100
+  num_epoch: 60
   save_model_every_n_epoch: 50
   loss: 'cross_entropy_weight' # choose 'cross_entropy' or 'cross_entropy_weight' or 'focal' or 'LACE'
 #  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20231123092750' # if False training from scratch

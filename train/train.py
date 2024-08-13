@@ -6,6 +6,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
+from models import resnext
 from models.classifier_vit import ViT, ViTPretrained
 import os
 import shutil
@@ -137,41 +138,47 @@ def train_nn(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    if config.training.architecture_type == 'simple_cnn':
-        model = SimpleCNN(num_classes=config.sampling.num_class,
-                          input_size=config.training.target_size,
+    model = resnext.Model(name=config.training.architecture_type,
+                          num_classes=config.sampling.num_class,
+                          feat_dim=512,
+                          use_norm=False,
                           gray=config.training.gray)
 
-    elif config.training.architecture_type == 'resnet18':
-        model = ResNetCustom(num_classes=config.sampling.num_class,
-                             input_size=config.training.target_size,
-                             gray=config.training.gray,
-                             pretrained=config.training.pre_train,
-                             freeze_layers=False)
-
-    elif config.training.architecture_type == 'mobilenet':
-        model = MobileNetCustom(num_classes=config.sampling.num_class,
-                                input_size=config.training.target_size,
-                                gray=config.training.gray)
-
-    elif config.training.architecture_type == 'shufflenet':
-        model = ShuffleNetCustom(num_classes=config.sampling.num_class,
-                                 input_size=config.training.target_size,
-                                 gray=config.training.gray)
-
-    elif config.training.architecture_type == 'vit_base':
-        model = ViT(input_size=config.training.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
-                    dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
-
-    elif config.training.architecture_type == 'vit_pretrained':
-        # pretrained_model_name = "vit_base_patch16_224"
-        # model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
-        model = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224",
-                                                          num_labels=config.sampling.num_class,
-                                                          ignore_mismatched_sizes=True)
-
-    else:
-        console.quit("Please select correct parameter for architecture_type")
+    # if config.training.architecture_type == 'simple_cnn':
+    #     model = SimpleCNN(num_classes=config.sampling.num_class,
+    #                       input_size=config.training.target_size,
+    #                       gray=config.training.gray)
+    #
+    # elif config.training.architecture_type == 'resnet18':
+    #     model = ResNetCustom(num_classes=config.sampling.num_class,
+    #                          input_size=config.training.target_size,
+    #                          gray=config.training.gray,
+    #                          pretrained=config.training.pre_train,
+    #                          freeze_layers=False)
+    #
+    # elif config.training.architecture_type == 'mobilenet':
+    #     model = MobileNetCustom(num_classes=config.sampling.num_class,
+    #                             input_size=config.training.target_size,
+    #                             gray=config.training.gray)
+    #
+    # elif config.training.architecture_type == 'shufflenet':
+    #     model = ShuffleNetCustom(num_classes=config.sampling.num_class,
+    #                              input_size=config.training.target_size,
+    #                              gray=config.training.gray)
+    #
+    # elif config.training.architecture_type == 'vit_base':
+    #     model = ViT(input_size=config.training.target_size[0], patch_size=16, num_classes=config.sampling.num_class,
+    #                 dim=256, depth=12, heads=8, mlp_dim=512, gray=config.training.gray, dropout=0.1)
+    #
+    # elif config.training.architecture_type == 'vit_pretrained':
+    #     # pretrained_model_name = "vit_base_patch16_224"
+    #     # model = ViTPretrained(pretrained_model_name, num_classes=config.sampling.num_class, gray=config.training.gray)
+    #     model = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224",
+    #                                                       num_labels=config.sampling.num_class,
+    #                                                       ignore_mismatched_sizes=True)
+    #
+    # else:
+    #     console.quit("Please select correct parameter for architecture_type")
 
     # Calculate the number of parameters in millions
     num_params = count_parameters(model) / 1_000_000
@@ -223,13 +230,13 @@ def train_nn(config_path, input_path, output_path):
             images, labels = images.to(device), labels.to(device)
 
             optimizer.zero_grad()
-            outputs = model(images)
+            feat_mlp, logits, _ = model(images)
             if config.training.architecture_type == 'vit_pretrained':
-                preds = outputs.logits.argmax(dim=-1)
-                loss = criterion(outputs.logits, labels)
+                preds = logits.logits.argmax(dim=-1)
+                loss = criterion(logits.logits, labels)
             else:
-                _, preds = torch.max(outputs, 1)
-                loss = criterion(outputs, labels)
+                _, preds = torch.max(logits, 1)
+                loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
 
@@ -308,12 +315,12 @@ def train_nn(config_path, input_path, output_path):
         for images, labels, img_names in val_loader:
             images, labels = images.to(device), labels.to(device)
 
-            outputs = model(images)
+            _, logits, _ = model(images)
 
             if config.training.architecture_type == 'vit_pretrained':
-                preds = outputs.logits.argmax(dim=-1)
+                preds = logits.logits.argmax(dim=-1)
             else:
-                _, preds = torch.max(outputs, 1)
+                _, preds = torch.max(logits, 1)
 
             all_labels.extend(labels.cpu().numpy())
             all_preds.extend(preds.cpu().numpy())

@@ -89,7 +89,7 @@ class UvpDataset(Dataset):
                 image = Image.merge("RGB", (image, image, image))
 
         if self.transform is not None:
-            if self.phase == 'train' and self.transform.__len__() == 3:
+            if self.phase == 'train' and hasattr(self.transform, '__len__') and len(self.transform) == 3:
                 sample1 = self.transform[0](image)
                 sample2 = self.transform[1](image)
                 sample3 = self.transform[2](image)

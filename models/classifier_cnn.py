@@ -65,7 +65,8 @@ class ResNetCustom(nn.Module):
             input_channels = 3
 
         # Load a pre-trained ResNet model
-        self.resnet = models.resnet18(weights=pretrained)
+        if pretrained:
+            self.resnet = models.resnet18(weights=pretrained)
 
         # Freeze the layers in the pre-trained model (if needed)
         # for param in self.resnet.parameters():
