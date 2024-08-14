@@ -54,26 +54,25 @@ training:
 training_contrastive:
   dataset: 'uvp' # choose uvp or imagenet
   architecture_type: 'resnet18' # choose 'resnet18', 'resnet34', 'resnet50' or 'resnext50'
-  batch_size: 2
+  batch_size: 128
   num_workers: 10
   gray: True
-  target_size: [32, 32]  #image target size
+  target_size: [128, 128]  #image target size
   padding: True # pad image to preserve aspect ratio
   pre_train: None # True or None
   learning_rate: 0.3
   momentum: 0.9 # momentum of SGD solver (default: 0.9)
   weight_decay: 0.0002 #weight decay (default: 2e-4)
   schedule: [160, 180] # learning rate schedule (when to drop lr by 10x)')
-  num_epoch: 1
+  num_epoch: 61
   warmup_epochs: 5 # warmup epochs
-  start_epoch: 0 # manual epoch number (useful on restarts)
   save_model_every_n_epoch: 50
   loss: 'proco' # choose 'proco'
   feat_dim: 128 # feature dimension of mlp head
   temp: 0.1  # scalar temperature for contrastive learning
-  use_norm: True # cosine classifier.
-#  path_pretrain: 'D:\mojmas\files\data\result_sampling\training20231123092750' # if False training from scratch
-  path_pretrain: False # if False training from scratch
+  use_norm: False # cosine classifier.
+  path_pretrain: 'D:\mojmas\files\data\result_sampling\training_contrastive20240813152329' # if False training from scratch
+#  path_pretrain: False # if False training from scratch
 
 
 prediction:

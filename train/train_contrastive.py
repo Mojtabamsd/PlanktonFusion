@@ -393,14 +393,14 @@ def train_uvp(config, console):
                     input_path = os.path.join(val_loader.dataset.root_dir, image_name)
                     shutil.copy(input_path, image_path)
 
-        total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
-        total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
-
-        dist.all_gather(total_logits_list, total_logits)
-        dist.all_gather(total_labels_list, total_labels)
-
-        total_logits = torch.cat(total_logits_list, dim=0)
-        total_labels = torch.cat(total_labels_list, dim=0)
+        # total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
+        # total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
+        #
+        # dist.all_gather(total_logits_list, total_logits)
+        # dist.all_gather(total_labels_list, total_labels)
+        #
+        # total_logits = torch.cat(total_logits_list, dim=0)
+        # total_labels = torch.cat(total_labels_list, dim=0)
 
         ce_loss = criterion_ce(total_logits, total_labels)
         acc1 = accuracy(total_logits, total_labels, topk=(1,))
