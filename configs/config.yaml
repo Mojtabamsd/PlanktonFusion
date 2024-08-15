@@ -64,7 +64,7 @@ training_contrastive:
   momentum: 0.9 # momentum of SGD solver (default: 0.9)
   weight_decay: 0.0002 #weight decay (default: 2e-4)
   schedule: [160, 180] # learning rate schedule (when to drop lr by 10x)')
-  num_epoch: 61
+  num_epoch: 60
   warmup_epochs: 5 # warmup epochs
   save_model_every_n_epoch: 50
   loss: 'proco' # choose 'proco'
