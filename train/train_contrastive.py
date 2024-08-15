@@ -116,7 +116,7 @@ def train_uvp(config, console):
                                          config.training_contrastive.target_size[1]))
     else:
         resize_operation = transforms.Resize((config.training_contrastive.target_size[0],
-                                         config.training_contrastive.target_size[1]))
+                                              config.training_contrastive.target_size[1]))
 
     transform_base = [
         resize_operation,

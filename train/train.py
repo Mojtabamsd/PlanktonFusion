@@ -88,6 +88,10 @@ def train_nn(config_path, input_path, output_path):
             RandomVerticalFlip(p=0.1),
             transforms.ToTensor(),
         ])
+        transform_val = transforms.Compose([
+            ResizeAndPad((config.training.target_size[0], config.training.target_size[1])),
+            transforms.ToTensor(),
+        ])
 
     else:
         transform = transforms.Compose([
@@ -101,6 +105,11 @@ def train_nn(config_path, input_path, output_path):
             RandomGrayscale(p=0.1),
             RandomPerspective(distortion_scale=0.2, p=0.5),
             RandomVerticalFlip(p=0.1),
+            transforms.ToTensor(),
+        ])
+
+        transform_val = transforms.Compose([
+            transforms.Resize((config.training.target_size[0], config.training.target_size[1])),
             transforms.ToTensor(),
         ])
 
@@ -295,7 +304,7 @@ def train_nn(config_path, input_path, output_path):
         test_dataset = UvpDataset(root_dir=input_folder_test,
                                   num_class=config.sampling.num_class,
                                   csv_file=input_csv_test,
-                                  transform=transform,
+                                  transform=transform_val,
                                   phase='test',
                                   gray=config.training.gray)
 
