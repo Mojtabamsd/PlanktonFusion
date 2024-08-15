@@ -42,6 +42,7 @@ training:
   num_workers: 10
   gray: False
   target_size: [128, 128]  #image target size
+  aug_mode: 2 # 1 normal, 2 massive
   padding: True # pad image to preserve aspect ratio
   pre_train: None # True or None
   learning_rate: 0.001

@@ -8,6 +8,7 @@ from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import SimpleCNN, ResNetCustom, MobileNetCustom, ShuffleNetCustom, count_parameters
 from models import resnext
 from models.classifier_vit import ViT, ViTPretrained
+from tools.randaugment import rand_augment_transform
 import os
 import shutil
 import torch
@@ -74,28 +75,17 @@ def train_nn(config_path, input_path, output_path):
     config.write(output_config_filename)
 
     # Define data transformations
+
     if config.training.padding:
-        transform = transforms.Compose([
-            ResizeAndPad((config.training.target_size[0], config.training.target_size[1])),
-            RandomHorizontalFlip(),
-            RandomRotation(degrees=30),
-            RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
-            GaussianNoise(std=0.1),
-            RandomResizedCrop((config.training.target_size[0], config.training.target_size[1])),
-            ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-            RandomGrayscale(p=0.1),
-            RandomPerspective(distortion_scale=0.2, p=0.5),
-            RandomVerticalFlip(p=0.1),
-            transforms.ToTensor(),
-        ])
-        transform_val = transforms.Compose([
-            ResizeAndPad((config.training.target_size[0], config.training.target_size[1])),
-            transforms.ToTensor(),
-        ])
-
+        resize_operation = ResizeAndPad((config.training.target_size[0],
+                                         config.training.target_size[1]))
     else:
+        resize_operation = transforms.Resize((config.training.target_size[0],
+                                              config.training.target_size[1]))
+
+    if config.training.aug_mode == 1:
         transform = transforms.Compose([
-            transforms.Resize((config.training.target_size[0], config.training.target_size[1])),
+            resize_operation,
             RandomHorizontalFlip(),
             RandomRotation(degrees=30),
             RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.8, 1.2), shear=15),
@@ -108,11 +98,28 @@ def train_nn(config_path, input_path, output_path):
             transforms.ToTensor(),
         ])
 
-        transform_val = transforms.Compose([
-            transforms.Resize((config.training.target_size[0], config.training.target_size[1])),
+    elif config.training.aug_mode == 2:
+        # Define data transformations
+        randaug_m = 10
+        randaug_n = 2
+        grayscale_mean = 128
+        ra_params = dict(
+            translate_const=int(config.training.target_size[0] * 0.45),
+            img_mean=grayscale_mean
+        )
+        transform = transforms.Compose([
+            resize_operation,
+            transforms.RandomResizedCrop(config.training.target_size[0]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomGrayscale(p=0.2),
+            rand_augment_transform('rand-n{}-m{}-mstd0.5'.format(randaug_n, randaug_m), ra_params, use_cmc=True),
             transforms.ToTensor(),
         ])
 
+    transform_val = transforms.Compose([
+        resize_operation,
+        transforms.ToTensor(),
+    ])
     # Create uvp dataset datasets for training and validation
     train_dataset = UvpDataset(root_dir=input_folder_train,
                                num_class=config.sampling.num_class,
