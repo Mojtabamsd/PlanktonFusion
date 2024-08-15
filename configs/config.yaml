@@ -39,6 +39,7 @@ sampling_syn:
 training:
   architecture_type: 'resnet18' # choose 'resnet18', 'resnet34', 'resnet50' or 'resnext50'
   batch_size: 256
+  num_workers: 10
   gray: False
   target_size: [128, 128]  #image target size
   padding: True # pad image to preserve aspect ratio

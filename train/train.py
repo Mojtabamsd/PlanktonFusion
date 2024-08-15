@@ -132,7 +132,7 @@ def train_nn(config_path, input_path, output_path):
         train_loader = DataLoader(train_dataset,
                                   batch_size=config.training.batch_size,
                                   shuffle=True,
-                                  num_workers=10)
+                                  num_workers=config.training.num_workers)
 
     device = torch.device(f'cuda:{config.base.gpu_index}' if
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
