@@ -17,7 +17,6 @@ from tools.utils import report_to_df, plot_loss, shot_acc
 from tools.randaugment import rand_augment_transform
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
-from torchvision.transforms import RandomHorizontalFlip,  RandomResizedCrop
 from tools.augmentation import ResizeAndPad
 from models.loss import LogitAdjust
 from models.proco import ProCoLoss
@@ -112,16 +111,23 @@ def train_uvp(config, console):
         img_mean=grayscale_mean
     )
 
+    if config.training_contrastive.padding:
+        resize_operation = ResizeAndPad((config.training_contrastive.target_size[0],
+                                         config.training_contrastive.target_size[1]))
+    else:
+        resize_operation = transforms.Resize((config.training_contrastive.target_size[0],
+                                         config.training_contrastive.target_size[1]))
+
     transform_base = [
-        ResizeAndPad((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
-        RandomResizedCrop((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
-        RandomHorizontalFlip(),
+        resize_operation,
+        transforms.RandomResizedCrop(config.training_contrastive.target_size[0]),
+        transforms.RandomHorizontalFlip(),
         transforms.RandomGrayscale(p=0.2),
         rand_augment_transform('rand-n{}-m{}-mstd0.5'.format(randaug_n, randaug_m), ra_params, use_cmc=True),
         transforms.ToTensor(),
     ]
     transform_sim = [
-        ResizeAndPad((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
+        resize_operation,
         transforms.RandomResizedCrop(config.training_contrastive.target_size[0]),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
@@ -135,7 +141,7 @@ def train_uvp(config, console):
                        transforms.Compose(transform_sim), ]
 
     transform_val = transforms.Compose([
-        ResizeAndPad((config.training_contrastive.target_size[0], config.training_contrastive.target_size[1])),
+        resize_operation,
         transforms.ToTensor()
         ])
 

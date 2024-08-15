@@ -72,8 +72,8 @@ training_contrastive:
   feat_dim: 128 # feature dimension of mlp head
   temp: 0.1  # scalar temperature for contrastive learning
   use_norm: False # cosine classifier.
-  path_pretrain: 'D:\mojmas\files\data\result_sampling\training_contrastive20240813152329' # if False training from scratch
-#  path_pretrain: False # if False training from scratch
+#  path_pretrain: 'D:\mojmas\files\data\result_sampling\training_contrastive20240813152329' # if False training from scratch
+  path_pretrain: False # if False training from scratch
 
 
 prediction:
