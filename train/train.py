@@ -252,7 +252,9 @@ def train_nn(config_path, input_path, output_path):
             images, labels = images.to(device), labels.to(device)
 
             optimizer.zero_grad()
-            feat_mlp, logits, _ = model(images)
+            # feat_mlp, logits, _ = model(images)
+            logits = model(images)
+
             if config.training.architecture_type == 'vit_pretrained':
                 preds = logits.logits.argmax(dim=-1)
                 loss = criterion(logits.logits, labels)
@@ -337,7 +339,8 @@ def train_nn(config_path, input_path, output_path):
         for images, labels, img_names in val_loader:
             images, labels = images.to(device), labels.to(device)
 
-            _, logits, _ = model(images)
+            # _, logits, _ = model(images)
+            logits = model(images)
 
             if config.training.architecture_type == 'vit_pretrained':
                 preds = logits.logits.argmax(dim=-1)
