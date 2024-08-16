@@ -44,7 +44,7 @@ training:
   target_size: [128, 128]  #image target size
   aug_mode: 2 # 1 normal, 2 massive
   padding: True # pad image to preserve aspect ratio
-  pre_train: None # True or None
+  pre_train: False # True or False
   learning_rate: 0.001
   num_epoch: 60
   save_model_every_n_epoch: 50
