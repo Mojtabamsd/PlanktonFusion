@@ -154,11 +154,17 @@ def train_nn(config_path, input_path, output_path):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    model = resnext.Model(name=config.training.architecture_type,
-                          num_classes=config.sampling.num_class,
-                          feat_dim=512,
-                          use_norm=False,
-                          gray=config.training.gray)
+    # model = resnext.Model(name=config.training.architecture_type,
+    #                       num_classes=config.sampling.num_class,
+    #                       feat_dim=512,
+    #                       use_norm=False,
+    #                       gray=config.training.gray)
+
+    model = ResNetCustom(num_classes=config.sampling.num_class,
+                         input_size=config.training.target_size,
+                         gray=config.training.gray,
+                         pretrained=config.training.pre_train,
+                         freeze_layers=False)
 
     # if config.training.architecture_type == 'simple_cnn':
     #     model = SimpleCNN(num_classes=config.sampling.num_class,
