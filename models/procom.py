@@ -1,4 +1,3 @@
-# This file is copied form source code implementation of proco paper https://github.com/LeapLabTHU/ProCo
 
 import torch
 import torch.nn as nn
@@ -101,15 +100,17 @@ class LogRatioC(torch.autograd.Function):
 
 
 class EstimatorCV():
-    def __init__(self, feature_num, class_num, device):
+    def __init__(self, feature_num, class_num, device, num_modes=3):
         super(EstimatorCV, self).__init__()
 
         self.class_num = class_num
         self.feature_num = feature_num
+        self.num_modes = num_modes
         self.device = device
-        self.Ave = F.normalize(torch.randn(class_num, feature_num), dim=1) * 0.9
-        self.Amount = torch.zeros(class_num)
-        self.kappa = torch.ones(class_num) * self.feature_num * 90 / 19
+
+        self.Ave = F.normalize(torch.randn(class_num, num_modes, feature_num), dim=1) * 0.9
+        self.Amount = torch.zeros(class_num, num_modes)
+        self.kappa = torch.ones(class_num, num_modes) * self.feature_num * 90 / 19
         tem = torch.from_numpy(ive(self.feature_num/2 - 1, self.kappa.cpu().numpy().astype(np.float64))).to(self.kappa.device)
         self.logc = torch.log(tem+1e-300) + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-300)
 
@@ -117,6 +118,25 @@ class EstimatorCV():
         self.Amount = self.Amount.to(self.device)
         self.kappa = self.kappa.to(self.device)
         self.logc = self.logc.to(self.device)
+
+    def assign_mode(self, features, labels):
+        device = features.device
+
+        N = features.size(0)
+        C = self.class_num
+        M = self.num_modes
+
+        # Calculate the distance (or similarity) of each feature to every mode of its class
+        distances = torch.zeros(N, M, device=device)
+        for i in range(N):
+            class_label = labels[i].item()
+            for m in range(M):
+                # Compute cosine similarity or Euclidean distance to each mode #TODO
+                distances[i, m] = F.cosine_similarity(features[i], self.Ave[class_label, m], dim=0)
+
+        # Assign each feature to the mode with the highest similarity
+        mode_assignments = torch.argmax(distances, dim=1)
+        return mode_assignments
 
     def reset(self):
         device = self.Ave.device  # Get the device from the attribute
@@ -147,42 +167,44 @@ class EstimatorCV():
         self.kappa = self.kappa.to(device)
         self.logc = self.logc.to(device)
 
-
         N = features.size(0)
         C = self.class_num
+        M = self.num_modes
         A = features.size(1)
 
-        NxCxFeatures = features.view(
-            N, 1, A
+        mode_assignments = self.assign_mode(features, labels)
+
+        NxCxMxFeatures = features.view(
+            N, 1, 1, A
         ).expand(
-            N, C, A
+            N, C, M, A
         )
-        onehot = torch.zeros(N, C, device=device)
+        onehot = torch.zeros(N, C, M, device=device)
 
-        onehot.scatter_(1, labels.view(-1, 1), 1)
+        # Scatter labels to one-hot encoded class-mode assignments
+        for i in range(N):
+            onehot[i, labels[i], mode_assignments[i]] = 1
 
-        NxCxA_onehot = onehot.view(N, C, 1).expand(N, C, A)
+        NxCxMxA_onehot = onehot.view(N, C, M, 1).expand(N, C, M, A)
 
-        features_by_sort = NxCxFeatures.mul(NxCxA_onehot)
+        features_by_sort = NxCxMxFeatures.mul(NxCxMxA_onehot)
 
-        Amount_CxA = NxCxA_onehot.sum(0)
-        Amount_CxA[Amount_CxA == 0] = 1
+        Amount_CxMxA = NxCxMxA_onehot.sum(0)
+        Amount_CxMxA[Amount_CxMxA == 0] = 1
 
-        ave_CxA = features_by_sort.sum(0) / Amount_CxA
+        ave_CxMxA = features_by_sort.sum(0) / Amount_CxMxA
 
-        sum_weight_AV = onehot.sum(0).view(C, 1).expand(C, A)
+        # Update the number of features per class-mode combination
+        sum_weight_CMxA = onehot.sum(0).view(C, M, 1).expand(C, M, A)
+        weight_CMxA = sum_weight_CMxA.div(sum_weight_CMxA + self.Amount.view(C, M, 1).expand(C, M, A)).to(device)
+        weight_CMxA[weight_CMxA != weight_CMxA] = 0  # Handle any NaNs
 
-        weight_AV = sum_weight_AV.div(
-            sum_weight_AV + self.Amount.view(C, 1).expand(C, A)
-        ).to(device)
-        weight_AV[weight_AV != weight_AV] = 0
-
-        self.Ave = (self.Ave.mul(1 - weight_AV) + ave_CxA.mul(weight_AV)).detach()
+        self.Ave = (self.Ave.mul(1 - weight_CMxA) + ave_CxMxA.mul(weight_CMxA)).detach()
 
         self.Amount += onehot.sum(0)
 
     def update_kappa(self, kappa_inf=False):
-        R = torch.linalg.norm(self.Ave, dim=1)
+        R = torch.linalg.norm(self.Ave, dim=2)
         self.kappa = self.feature_num * R / ( 1 - R**2)
 
         self.kappa[self.kappa > 1e5] = 1e5
@@ -194,9 +216,9 @@ class EstimatorCV():
         self.logc = nu + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-20)
 
 
-class ProCoLoss(nn.Module):
+class ProCoMLoss(nn.Module):
     def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0'):
-        super(ProCoLoss, self).__init__()
+        super(ProCoMLoss, self).__init__()
         self.temperature = temperature
         self.num_classes = num_classes
         self.feature_num = contrast_dim
@@ -215,6 +237,8 @@ class ProCoLoss(nn.Module):
         self.estimator_old.reload_memory()
         self.estimator.reload_memory()
 
+
+
     def _hook_before_epoch(self, epoch, epochs):
         # exchange ave and covariances
 
@@ -224,7 +248,9 @@ class ProCoLoss(nn.Module):
         self.estimator_old.kappa = self.estimator.kappa
         self.estimator_old.logc = self.estimator.logc
 
+
         self.estimator.reset()
+
 
     def forward(self, features, labels=None, sup_logits=None, world_size=1):
         batch_size = features.size(0)
@@ -245,22 +271,45 @@ class ProCoLoss(nn.Module):
             total_features = features
             total_labels = labels
 
+            # Assign each feature to a mode
+            mode_assignments = self.estimator.assign_mode(total_features.detach(), total_labels)
+
             self.estimator_old.update_CV(total_features.detach(), total_labels)
             self.estimator.update_CV(total_features.detach(), total_labels)
             self.estimator_old.update_kappa()
 
         Ave = self.estimator_old.Ave.detach()
-        Ave_norm = F.normalize(Ave, dim=1)
+        Ave_norm = F.normalize(Ave, dim=2)
         logc = self.estimator_old.logc.detach()
         kappa = self.estimator_old.kappa.detach()
 
-        tem = kappa.reshape(-1, 1) * Ave_norm
-        tem = tem.unsqueeze(0) + features[:N].unsqueeze(1) / self.temperature
-        kappa_new = torch.linalg.norm(tem, dim=2)
+        # Compute contrastive logits considering only the assigned modes
+        contrast_logits = torch.zeros(N, self.num_classes * self.estimator.num_modes, device=device)
 
-        contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
+        # Compute contrastive logits against all classes and all modes
+        for i in range(N):
+            feature = features[i]  # Anchor feature
 
-        return contrast_logits
+            for class_idx in range(self.num_classes):
+                for mode_idx in range(self.estimator.num_modes):
+                    mode_vector = Ave_norm[class_idx, mode_idx]
+                    kappa_val = kappa[class_idx, mode_idx]
+                    logc_val = logc[class_idx, mode_idx]
+
+                    # Calculate logits for this class-mode pair
+                    tem = kappa_val * mode_vector + feature / self.temperature
+                    kappa_new = torch.linalg.norm(tem, dim=0)
+
+                    contrast_logits[i, class_idx * self.estimator.num_modes + mode_idx] = LogRatioC.apply(
+                        kappa_new, torch.tensor(self.estimator.feature_num), logc_val
+                    )
+
+        contrast_logits = contrast_logits.view(batch_size, self.num_classes, self.estimator.num_modes)
+        class_logits = torch.max(contrast_logits, dim=2)[0]  # Max Pooling Across Modes (Best Fit Mode)
+        # class_logits = torch.mean(contrast_logits, dim=2)  # Mean pooling across modes
+        # class_logits = torch.logsumexp(contrast_logits, dim=2)  # Log-Sum-Exp pooling across modes
+
+        return class_logits
 
 
 

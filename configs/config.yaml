@@ -40,9 +40,9 @@ training:
   architecture_type: 'resnet18' # choose 'resnet18', 'resnet34', 'resnet50' or 'resnext50'
   batch_size: 256
   num_workers: 10
-  gray: False
+  gray: True
   target_size: [128, 128]  #image target size
-  aug_mode: 2 # 1 normal, 2 massive
+  aug_mode: 1 # 1 normal, 2 massive
   padding: True # pad image to preserve aspect ratio
   pre_train: False # True or False
   learning_rate: 0.001
@@ -59,7 +59,7 @@ training_contrastive:
   batch_size: 128
   num_workers: 10
   gray: True
-  target_size: [128, 128]  #image target size
+  target_size: [32, 32]  #image target size
   padding: True # pad image to preserve aspect ratio
   pre_train: None # True or None
   learning_rate: 0.3
@@ -69,7 +69,7 @@ training_contrastive:
   num_epoch: 60
   warmup_epochs: 5 # warmup epochs
   save_model_every_n_epoch: 50
-  loss: 'proco' # choose 'proco'
+  loss: 'procom' # choose 'proco' or 'procom'
   feat_dim: 128 # feature dimension of mlp head
   temp: 0.1  # scalar temperature for contrastive learning
   use_norm: False # cosine classifier.

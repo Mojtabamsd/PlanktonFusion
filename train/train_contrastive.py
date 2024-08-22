@@ -20,6 +20,7 @@ import pandas as pd
 from tools.augmentation import ResizeAndPad
 from models.loss import LogitAdjust
 from models.proco import ProCoLoss
+from models.procom import ProCoMLoss
 import time
 import torch.nn.functional as F
 
@@ -216,6 +217,12 @@ def train_uvp(config, console):
                                   temperature=config.training_contrastive.temp,
                                   num_classes=config.sampling.num_class,
                                   device=device)
+    elif config.training_contrastive.loss == 'procom':
+        criterion_ce = LogitAdjust(class_counts, device=device)
+        criterion_scl = ProCoMLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                   temperature=config.training_contrastive.temp,
+                                   num_classes=config.sampling.num_class,
+                                   device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
