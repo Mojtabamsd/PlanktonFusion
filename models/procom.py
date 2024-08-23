@@ -248,9 +248,7 @@ class ProCoMLoss(nn.Module):
         self.estimator_old.kappa = self.estimator.kappa
         self.estimator_old.logc = self.estimator.logc
 
-
         self.estimator.reset()
-
 
     def forward(self, features, labels=None, sup_logits=None, world_size=1):
         batch_size = features.size(0)
@@ -279,30 +277,21 @@ class ProCoMLoss(nn.Module):
             self.estimator_old.update_kappa()
 
         Ave = self.estimator_old.Ave.detach()
-        Ave_norm = F.normalize(Ave, dim=2)
-        logc = self.estimator_old.logc.detach()
-        kappa = self.estimator_old.kappa.detach()
+        Ave_norm = F.normalize(Ave, dim=2)         # Shape: [class_num, num_modes, feature_num]
+        logc = self.estimator_old.logc.detach()    # Shape: [class_num, num_modes]
+        kappa = self.estimator_old.kappa.detach()  # Shape: [class_num, num_modes]
 
-        # Compute contrastive logits considering only the assigned modes
-        contrast_logits = torch.zeros(N, self.num_classes * self.estimator.num_modes, device=device)
+        Ave_norm = Ave_norm.view(self.num_classes * self.estimator.num_modes, -1)
+        logc = logc.view(-1)
+        kappa = kappa.view(-1)
 
-        # Compute contrastive logits against all classes and all modes
-        for i in range(N):
-            feature = features[i]  # Anchor feature
+        similarities = torch.matmul(features, Ave_norm.T) / self.temperature
 
-            for class_idx in range(self.num_classes):
-                for mode_idx in range(self.estimator.num_modes):
-                    mode_vector = Ave_norm[class_idx, mode_idx]
-                    kappa_val = kappa[class_idx, mode_idx]
-                    logc_val = logc[class_idx, mode_idx]
+        # Compute the norm for each logit
+        kappa_new = torch.sqrt(kappa ** 2 + 2 * kappa * similarities + 1)
 
-                    # Calculate logits for this class-mode pair
-                    tem = kappa_val * mode_vector + feature / self.temperature
-                    kappa_new = torch.linalg.norm(tem, dim=0)
-
-                    contrast_logits[i, class_idx * self.estimator.num_modes + mode_idx] = LogRatioC.apply(
-                        kappa_new, torch.tensor(self.estimator.feature_num), logc_val
-                    )
+        # Apply the custom log-ratio function to compute the logits
+        contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
 
         contrast_logits = contrast_logits.view(batch_size, self.num_classes, self.estimator.num_modes)
         class_logits = torch.max(contrast_logits, dim=2)[0]  # Max Pooling Across Modes (Best Fit Mode)
