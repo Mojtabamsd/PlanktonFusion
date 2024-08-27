@@ -222,6 +222,7 @@ def train_uvp(config, console):
         criterion_scl = ProCoMLoss(contrast_dim=config.training_contrastive.feat_dim,
                                    temperature=config.training_contrastive.temp,
                                    num_classes=config.sampling.num_class,
+                                   max_modes=config.training_contrastive.max_modes,
                                    device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,

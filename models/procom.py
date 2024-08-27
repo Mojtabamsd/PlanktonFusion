@@ -100,17 +100,17 @@ class LogRatioC(torch.autograd.Function):
 
 
 class EstimatorCV():
-    def __init__(self, feature_num, class_num, device, num_modes=3):
+    def __init__(self, feature_num, class_num, max_modes, device):
         super(EstimatorCV, self).__init__()
 
         self.class_num = class_num
         self.feature_num = feature_num
-        self.num_modes = num_modes
+        self.max_modes = max_modes
         self.device = device
 
-        self.Ave = F.normalize(torch.randn(class_num, num_modes, feature_num), dim=1) * 0.9
-        self.Amount = torch.zeros(class_num, num_modes)
-        self.kappa = torch.ones(class_num, num_modes) * self.feature_num * 90 / 19
+        self.Ave = F.normalize(torch.randn(class_num, max_modes, feature_num), dim=1) * 0.9
+        self.Amount = torch.zeros(class_num, max_modes)
+        self.kappa = torch.ones(class_num, max_modes) * self.feature_num * 90 / 19
         tem = torch.from_numpy(ive(self.feature_num/2 - 1, self.kappa.cpu().numpy().astype(np.float64))).to(self.kappa.device)
         self.logc = torch.log(tem+1e-300) + self.kappa - (self.feature_num/2 - 1) * torch.log(self.kappa+1e-300)
 
@@ -119,12 +119,17 @@ class EstimatorCV():
         self.kappa = self.kappa.to(self.device)
         self.logc = self.logc.to(self.device)
 
+    # introduce an L1 regularization term to encourage 𝜅 values to become small for modes that are not useful:
+    def compute_regularization_loss(self):
+        reg_loss = torch.sum(torch.abs(self.kappa))
+        return reg_loss
+
     def assign_mode(self, features, labels):
         device = features.device
 
         N = features.size(0)
         C = self.class_num
-        M = self.num_modes
+        M = self.max_modes
 
         # Calculate the distance (or similarity) of each feature to every mode of its class
         distances = torch.zeros(N, M, device=device)
@@ -169,7 +174,7 @@ class EstimatorCV():
 
         N = features.size(0)
         C = self.class_num
-        M = self.num_modes
+        M = self.max_modes
         A = features.size(1)
 
         mode_assignments = self.assign_mode(features, labels)
@@ -217,14 +222,15 @@ class EstimatorCV():
 
 
 class ProCoMLoss(nn.Module):
-    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0'):
+    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, max_modes=10, device='cuda:0'):
         super(ProCoMLoss, self).__init__()
         self.temperature = temperature
         self.num_classes = num_classes
         self.feature_num = contrast_dim
         self.device = device
-        self.estimator_old = EstimatorCV(self.feature_num, num_classes, self.device)
-        self.estimator = EstimatorCV(self.feature_num, num_classes, self.device)
+        self.max_modes = max_modes
+        self.estimator_old = EstimatorCV(self.feature_num, num_classes, self.max_modes, self.device)
+        self.estimator = EstimatorCV(self.feature_num, num_classes, self.max_modes, self.device)
 
     def cal_weight_for_classes(self, cls_num_list):
         cls_num_list = torch.Tensor(cls_num_list).view(1, self.num_classes)
@@ -236,8 +242,6 @@ class ProCoMLoss(nn.Module):
 
         self.estimator_old.reload_memory()
         self.estimator.reload_memory()
-
-
 
     def _hook_before_epoch(self, epoch, epochs):
         # exchange ave and covariances
@@ -277,11 +281,11 @@ class ProCoMLoss(nn.Module):
             self.estimator_old.update_kappa()
 
         Ave = self.estimator_old.Ave.detach()
-        Ave_norm = F.normalize(Ave, dim=2)         # Shape: [class_num, num_modes, feature_num]
-        logc = self.estimator_old.logc.detach()    # Shape: [class_num, num_modes]
-        kappa = self.estimator_old.kappa.detach()  # Shape: [class_num, num_modes]
+        Ave_norm = F.normalize(Ave, dim=2)         # Shape: [class_num, max_modes, feature_num]
+        logc = self.estimator_old.logc.detach()    # Shape: [class_num, max_modes]
+        kappa = self.estimator_old.kappa.detach()  # Shape: [class_num, max_modes]
 
-        Ave_norm = Ave_norm.view(self.num_classes * self.estimator.num_modes, -1)
+        Ave_norm = Ave_norm.view(self.num_classes * self.max_modes, -1)
         logc = logc.view(-1)
         kappa = kappa.view(-1)
 
@@ -293,8 +297,14 @@ class ProCoMLoss(nn.Module):
         # Apply the custom log-ratio function to compute the logits
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
 
-        contrast_logits = contrast_logits.view(batch_size, self.num_classes, self.estimator.num_modes)
-        class_logits = torch.max(contrast_logits, dim=2)[0]  # Max Pooling Across Modes (Best Fit Mode)
+        contrast_logits = contrast_logits.view(batch_size, self.num_classes, self.max_modes)
+
+        l1_reg_loss = self.estimator.compute_regularization_loss()
+        reg_weight = 0.001
+
+        total_loss = contrast_logits + reg_weight * l1_reg_loss
+
+        class_logits = torch.max(total_loss, dim=2)[0]  # Max Pooling Across modes (Best Fit Mode)
         # class_logits = torch.mean(contrast_logits, dim=2)  # Mean pooling across modes
         # class_logits = torch.logsumexp(contrast_logits, dim=2)  # Log-Sum-Exp pooling across modes
 

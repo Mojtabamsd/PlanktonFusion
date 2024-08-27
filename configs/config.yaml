@@ -70,6 +70,7 @@ training_contrastive:
   warmup_epochs: 5 # warmup epochs
   save_model_every_n_epoch: 50
   loss: 'procom' # choose 'proco' or 'procom'
+  max_modes: 10`
   feat_dim: 128 # feature dimension of mlp head
   temp: 0.1  # scalar temperature for contrastive learning
   use_norm: False # cosine classifier.
