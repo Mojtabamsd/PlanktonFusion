@@ -119,11 +119,6 @@ class EstimatorCV():
         self.kappa = self.kappa.to(self.device)
         self.logc = self.logc.to(self.device)
 
-    # introduce an L1 regularization term to encourage 𝜅 values to become small for modes that are not useful:
-    def compute_regularization_loss(self):
-        reg_loss = torch.sum(torch.abs(self.kappa))
-        return reg_loss
-
     def assign_mode(self, features, labels):
         device = features.device
 
@@ -299,12 +294,7 @@ class ProCoMLoss(nn.Module):
 
         contrast_logits = contrast_logits.view(batch_size, self.num_classes, self.max_modes)
 
-        l1_reg_loss = self.estimator.compute_regularization_loss()
-        reg_weight = 0.001
-
-        total_loss = contrast_logits + reg_weight * l1_reg_loss
-
-        class_logits = torch.max(total_loss, dim=2)[0]  # Max Pooling Across modes (Best Fit Mode)
+        class_logits = torch.max(contrast_logits, dim=2)[0]  # Max Pooling Across modes (Best Fit Mode)
         # class_logits = torch.mean(contrast_logits, dim=2)  # Mean pooling across modes
         # class_logits = torch.logsumexp(contrast_logits, dim=2)  # Log-Sum-Exp pooling across modes
 
