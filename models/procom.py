@@ -100,11 +100,12 @@ class LogRatioC(torch.autograd.Function):
 
 
 class EstimatorCV():
-    def __init__(self, feature_num, class_num, max_modes, device):
+    def __init__(self, feature_num, temperature, class_num, max_modes, device):
         super(EstimatorCV, self).__init__()
 
         self.class_num = class_num
         self.feature_num = feature_num
+        self.temperature = temperature
         self.max_modes = max_modes
         self.device = device
 
@@ -137,6 +138,27 @@ class EstimatorCV():
         # Assign each feature to the mode with the highest similarity
         mode_assignments = torch.argmax(distances, dim=1)
         return mode_assignments
+
+    def soft_assign_mode(self, features, labels):
+        device = features.device
+        N = features.size(0)  # Number of features
+        C = self.class_num  # Number of classes
+        M = self.max_modes  # Number of modes per class
+
+        # Initialize the tensor for mode probabilities
+        mode_probs = torch.zeros(N, M, device=device)
+
+        # Iterate over each feature and compute similarity to each mode of its class
+        for i in range(N):
+            class_label = labels[i].item()
+
+            # Compute cosine similarities to all modes of the class
+            similarities = F.cosine_similarity(features[i].unsqueeze(0), self.Ave[class_label], dim=1)
+
+            # Use softmax to convert similarities to probabilities
+            mode_probs[i] = F.softmax(similarities / self.temperature, dim=0)
+
+        return mode_probs  # Shape: [N, M]
 
     def reset(self):
         device = self.Ave.device  # Get the device from the attribute
@@ -172,7 +194,8 @@ class EstimatorCV():
         M = self.max_modes
         A = features.size(1)
 
-        mode_assignments = self.assign_mode(features, labels)
+        # mode_assignments = self.assign_mode(features, labels)
+        soft_assignments = self.soft_assign_mode(features, labels)
 
         NxCxMxFeatures = features.view(
             N, 1, 1, A
@@ -181,9 +204,13 @@ class EstimatorCV():
         )
         onehot = torch.zeros(N, C, M, device=device)
 
-        # Scatter labels to one-hot encoded class-mode assignments
+        # # Scatter labels to one-hot encoded class-mode assignments
+        # for i in range(N):
+        #     onehot[i, labels[i], mode_assignments[i]] = 1
+
+        # Assign each feature to a class
         for i in range(N):
-            onehot[i, labels[i], mode_assignments[i]] = 1
+            onehot[i, labels[i]] = soft_assignments[i]
 
         NxCxMxA_onehot = onehot.view(N, C, M, 1).expand(N, C, M, A)
 
@@ -224,8 +251,8 @@ class ProCoMLoss(nn.Module):
         self.feature_num = contrast_dim
         self.device = device
         self.max_modes = max_modes
-        self.estimator_old = EstimatorCV(self.feature_num, num_classes, self.max_modes, self.device)
-        self.estimator = EstimatorCV(self.feature_num, num_classes, self.max_modes, self.device)
+        self.estimator_old = EstimatorCV(self.feature_num, self.temperature, num_classes, self.max_modes, self.device)
+        self.estimator = EstimatorCV(self.feature_num, self.temperature, num_classes, self.max_modes, self.device)
 
     def cal_weight_for_classes(self, cls_num_list):
         cls_num_list = torch.Tensor(cls_num_list).view(1, self.num_classes)
@@ -269,7 +296,8 @@ class ProCoMLoss(nn.Module):
             total_labels = labels
 
             # Assign each feature to a mode
-            mode_assignments = self.estimator.assign_mode(total_features.detach(), total_labels)
+            # mode_assignments = self.estimator.assign_mode(total_features.detach(), total_labels)
+            soft_assignments = self.estimator.soft_assign_mode(total_features.detach(), total_labels)
 
             self.estimator_old.update_CV(total_features.detach(), total_labels)
             self.estimator.update_CV(total_features.detach(), total_labels)
@@ -294,7 +322,9 @@ class ProCoMLoss(nn.Module):
 
         contrast_logits = contrast_logits.view(batch_size, self.num_classes, self.max_modes)
 
-        class_logits = torch.max(contrast_logits, dim=2)[0]  # Max Pooling Across modes (Best Fit Mode)
+        # Weight the logits by the soft assignment probabilities
+        class_logits = torch.sum(contrast_logits * soft_assignments.unsqueeze(1), dim=2)
+        # class_logits = torch.max(contrast_logits, dim=2)[0]  # Max Pooling Across modes (Best Fit Mode)
         # class_logits = torch.mean(contrast_logits, dim=2)  # Mean pooling across modes
         # class_logits = torch.logsumexp(contrast_logits, dim=2)  # Log-Sum-Exp pooling across modes
 
