@@ -14,6 +14,10 @@ class ImageNetLT(Dataset):
         self.num_classes = 1000
         self.train = train
         self.class_balance = class_balance
+
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        txt = os.path.normpath(os.path.join(project_root, txt))
+
         with open(txt) as f:
             for line in f:
                 self.img_path.append(os.path.join(root, line.split()[0]))
