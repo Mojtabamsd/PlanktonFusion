@@ -472,8 +472,8 @@ def train_imagenet(config, console):
     # number of classes for imagenet
     config.sampling.num_classes = 1000
 
-    txt_train = f'dataset/ImageNet_LT/ImageNet_LT_train.txt'
-    # txt_val = f'dataset/ImageNet_LT/ImageNet_LT_val.txt'
+    txt_train = f'ImageNet_LT/ImageNet_LT_train.txt'
+    # txt_val = f'ImageNet_LT/ImageNet_LT_val.txt'
     normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 
     # Define data transformations
@@ -728,7 +728,7 @@ def train_imagenet(config, console):
 
     console.info(f"Final model weights saved to {saved_weights_file}")
 
-    txt_test = f'dataset/ImageNet_LT/ImageNet_LT_test.txt'
+    txt_test = f'ImageNet_LT/ImageNet_LT_test.txt'
     test_dataset = ImageNetLT(
         root=config.input_path,
         txt=txt_test,
@@ -752,7 +752,7 @@ def train_imagenet(config, console):
     ce_loss_all = AverageMeter('CE_Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
 
-    total_logits = torch.empty((0, config.sampling.num_class)).to(device)
+    total_logits = torch.empty((0, 1000)).to(device)
     total_labels = torch.empty(0, dtype=torch.long).to(device)
 
     with torch.no_grad():
@@ -769,14 +769,14 @@ def train_imagenet(config, console):
 
             batch_time.update(time.time() - end)
 
-        total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
-        total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
-
-        dist.all_gather(total_logits_list, total_logits)
-        dist.all_gather(total_labels_list, total_labels)
-
-        total_logits = torch.cat(total_logits_list, dim=0)
-        total_labels = torch.cat(total_labels_list, dim=0)
+        # total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
+        # total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
+        #
+        # dist.all_gather(total_logits_list, total_logits)
+        # dist.all_gather(total_labels_list, total_labels)
+        #
+        # total_logits = torch.cat(total_logits_list, dim=0)
+        # total_labels = torch.cat(total_labels_list, dim=0)
 
         ce_loss = criterion_ce(total_logits, total_labels)
         acc1 = accuracy(total_logits, total_labels, topk=(1,))
