@@ -469,7 +469,7 @@ def train_imagenet(config, console):
     config.sampling.num_classes = 1000
 
     txt_train = f'dataset/ImageNet_LT/ImageNet_LT_train.txt'
-    txt_val = f'dataset/ImageNet_LT/ImageNet_LT_val.txt'
+    # txt_val = f'dataset/ImageNet_LT/ImageNet_LT_val.txt'
     normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 
     # Define data transformations
@@ -529,10 +529,10 @@ def train_imagenet(config, console):
     ])
 
     config.input_path = ''
-    val_dataset = ImageNetLT(
-        root=config.input_path,
-        txt=txt_val,
-        transform=transform_val, train=False)
+    # val_dataset = ImageNetLT(
+    #     root=config.input_path,
+    #     txt=txt_val,
+    #     transform=transform_val, train=False)
 
     train_dataset = ImageNetLT(
         root=config.input_path,
@@ -540,7 +540,7 @@ def train_imagenet(config, console):
         transform=transform_train)
 
     console.info(f'===> Training data length {len(train_dataset)}')
-    console.info(f'===> Validation data length {len(val_dataset)}')
+    # console.info(f'===> Validation data length {len(val_dataset)}')
 
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     # val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
