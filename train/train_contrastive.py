@@ -616,15 +616,15 @@ def train_imagenet(config, console):
                                 momentum=config.training_contrastive.momentum,
                                 weight_decay=config.training_contrastive.weight_decay)
 
-    # if config.training_contrastive.num_epoch == 200:
-    #     config.training_contrastive.schedule = [160, 180]
-    #     config.training_contrastive.warmup_epochs = 5
-    # elif config.training_contrastive.num_epoch == 400:
-    #     config.training_contrastive.schedule = [360, 380]
-    #     config.training_contrastive.warmup_epochs = 10
-    # else:
-    #     config.training_contrastive.schedule = [config.training_contrastive.num_epoch * 0.8, config.training_contrastive.num_epoch * 0.9]
-    #     config.training_contrastive.warmup_epochs = 5 * config.training_contrastive.num_epoch // 200
+    if config.training_contrastive.num_epoch == 200:
+        config.training_contrastive.schedule = [160, 180]
+        config.training_contrastive.warmup_epochs = 5
+    elif config.training_contrastive.num_epoch == 400:
+        config.training_contrastive.schedule = [360, 380]
+        config.training_contrastive.warmup_epochs = 10
+    else:
+        config.training_contrastive.schedule = [config.training_contrastive.num_epoch * 0.8, config.training_contrastive.num_epoch * 0.9]
+        config.training_contrastive.warmup_epochs = 5 * config.training_contrastive.num_epoch // 200
 
     ce_loss_all_avg = []
     scl_loss_all_avg = []
