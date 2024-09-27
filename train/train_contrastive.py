@@ -37,8 +37,12 @@ def train_contrastive(config_path, input_path, output_path):
     input_folder = Path(input_path)
     output_folder = Path(output_path)
 
-    input_folder_train = input_folder / "train"
-    input_folder_test = input_folder / "test"
+    if config.training_contrastive.dataset == 'uvp':
+        input_folder_train = input_folder / "train"
+        input_folder_test = input_folder / "test"
+    elif config.training_contrastive.dataset == 'imagenet':
+        input_folder_train = input_folder
+        input_folder_test = input_folder
 
     console = Console(output_folder)
     console.info("Training started ...")
@@ -528,26 +532,30 @@ def train_imagenet(config, console):
         normalize
     ])
 
-    config.input_path = ''
+    # config.input_path = ''
     # val_dataset = ImageNetLT(
     #     root=config.input_path,
     #     txt=txt_val,
     #     transform=transform_val, train=False)
 
     train_dataset = ImageNetLT(
-        root=config.input_path,
+        root=config.input_folder_train,
         txt=txt_train,
         transform=transform_train)
 
     console.info(f'===> Training data length {len(train_dataset)}')
     # console.info(f'===> Validation data length {len(val_dataset)}')
 
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     # val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
 
+    # train_loader = torch.utils.data.DataLoader(
+    #     train_dataset, batch_size=config.training_contrastive.batch_size, shuffle=(train_sampler is None),
+    #     num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=config.training_contrastive.batch_size, shuffle=(train_sampler is None),
-        num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+        train_dataset, batch_size=config.training_contrastive.batch_size, shuffle=True,
+        num_workers=config.training_contrastive.num_workers)
 
     # val_loader = torch.utils.data.DataLoader(
     #     val_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
@@ -557,7 +565,7 @@ def train_imagenet(config, console):
                           torch.cuda.is_available() and config.base.cpu is False else 'cpu')
     console.info(f"Running on:  {device}")
 
-    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_class,
+    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=1000,
                           feat_dim=config.training_contrastive.feat_dim,
                           use_norm=config.training_contrastive.use_norm,
                           gray=config.training_contrastive.gray)
@@ -594,8 +602,15 @@ def train_imagenet(config, console):
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
                                   temperature=config.training_contrastive.temp,
-                                  num_classes=config.sampling.num_class,
+                                  num_classes=1000,
                                   device=device)
+    elif config.training_contrastive.loss == 'procom':
+        criterion_ce = LogitAdjust(cls_num_list, device=device)
+        criterion_scl = ProCoMLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                   temperature=config.training_contrastive.temp,
+                                   num_classes=1000,
+                                   max_modes=config.training_contrastive.max_modes,
+                                   device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
@@ -630,7 +645,7 @@ def train_imagenet(config, console):
 
         end = time.time()
 
-        for batch_idx, (images, labels, _) in enumerate(train_loader):
+        for batch_idx, (images, labels) in enumerate(train_loader):
             images = torch.cat([images[0], images[1], images[2]], dim=0)
             images, labels = images.to(device), labels.to(device)
             batch_size = labels.shape[0]
@@ -719,11 +734,15 @@ def train_imagenet(config, console):
         txt=txt_test,
         transform=transform_val, train=False)
 
-    test_sampler = torch.utils.data.distributed.DistributedSampler(test_dataset)
+    # test_sampler = torch.utils.data.distributed.DistributedSampler(test_dataset)
+
+    # test_loader = torch.utils.data.DataLoader(
+    #     test_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
+    #     num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=test_sampler)
 
     test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
-        num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=test_sampler)
+        test_dataset, batch_size=config.training_contrastive.batch_size, shuffle=True,
+        num_workers=config.training_contrastive.num_workers)
 
     # Evaluation loop
     model.eval()
@@ -733,8 +752,8 @@ def train_imagenet(config, console):
     ce_loss_all = AverageMeter('CE_Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
 
-    total_logits = torch.empty((0, config.sampling.num_class)).cuda()
-    total_labels = torch.empty(0, dtype=torch.long).cuda()
+    total_logits = torch.empty((0, config.sampling.num_class)).to(device)
+    total_labels = torch.empty(0, dtype=torch.long).to(device)
 
     with torch.no_grad():
         end = time.time()
@@ -784,7 +803,6 @@ def train_imagenet(config, console):
     report = classification_report(
         total_labels,
         all_preds,
-        target_names=train_dataset.label_to_int,
         digits=6,
     )
 
