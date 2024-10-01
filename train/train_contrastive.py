@@ -3,7 +3,7 @@ from configs.config import Configuration
 from tools.console import Console
 from pathlib import Path
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, DistributedSampler
 from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
 from models import resnext
@@ -23,6 +23,8 @@ from models.proco import ProCoLoss
 from models.procom import ProCoMLoss
 import time
 import torch.nn.functional as F
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 def train_contrastive(config_path, input_path, output_path):
@@ -85,27 +87,53 @@ def train_contrastive(config_path, input_path, output_path):
     config.training_path = str(training_path)
 
     # parallel processing
-    os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
-    os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '12345')
-    os.environ['WORLD_SIZE'] = os.getenv('WORLD_SIZE', '1')
-    os.environ['RANK'] = os.getenv('RANK', '0')
-    os.environ['LOCAL_RANK'] = os.getenv('LOCAL_RANK', '0')
+    # config.world_size = torch.cuda.device_count()
 
-    config.world_size = int(os.environ["WORLD_SIZE"])
-    rank = int(os.environ["RANK"])
-    gpu = int(os.environ["LOCAL_RANK"])
+    if config.base.all_gpu:
+        # config.world_size = torch.cuda.device_count()
+        world_size = 1
+    else:
+        world_size = 1
 
-    # distributed = True
-    # multiprocessing_distributed = True
     # dist.init_process_group(backend='gloo', init_method='env://', world_size=config.world_size, rank=rank)
 
     if config.training_contrastive.dataset == 'uvp':
-        train_uvp(config, console)
+        # train_uvp(config, console)
+
+        if world_size > 1:
+            mp.spawn(train_uvp, args=(world_size, config, console), nprocs=world_size, join=True)
+        else:
+            train_uvp(config.base.gpu_index, world_size, config, console)
+
     elif config.training_contrastive.dataset == 'imagenet':
         train_imagenet(config, console)
 
 
-def train_uvp(config, console):
+def setup(rank, world_size):
+    if world_size > 1:
+        dist.init_process_group(
+            backend='gloo',  # Use 'nccl' for multi-GPU
+            init_method='env://',
+            rank=rank,
+            world_size=world_size
+        )
+
+
+def cleanup():
+    if dist.is_initialized():
+        dist.destroy_process_group()
+
+
+def train_uvp(rank, world_size, config, console):
+
+    if world_size > 1:
+        setup(rank, world_size)
+
+    is_distributed = world_size > 1
+
+    device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
+    console.info(f"Running on:  {device}")
+
     # Define data transformations
     randaug_m = 10
     randaug_n = 2
@@ -164,26 +192,16 @@ def train_uvp(config, console):
     class_weights_tensor = torch.FloatTensor(class_weights)
     class_weights_tensor = class_weights_tensor / class_weights_tensor.sum()
 
-    class_balancing = False
-    if class_balancing:
-        # class balanced sampling
-        sampler = torch.utils.data.WeightedRandomSampler(weights=class_weights_tensor,
-                                                         num_samples=len(train_dataset),
-                                                         replacement=True)
-        train_loader = DataLoader(train_dataset,
-                                  batch_size=config.training_contrastive.batch_size,
-                                  sampler=sampler,
-                                  num_workers=config.training_contrastive.num_workers)
-
+    if is_distributed:
+        sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
     else:
-        train_loader = DataLoader(train_dataset,
-                                  batch_size=config.training_contrastive.batch_size,
-                                  shuffle=True,
-                                  num_workers=config.training_contrastive.num_workers)
+        sampler = None
 
-    device = torch.device(f'cuda:{config.base.gpu_index}' if
-                          torch.cuda.is_available() and config.base.cpu is False else 'cpu')
-    console.info(f"Running on:  {device}")
+    train_loader = DataLoader(train_dataset,
+                              batch_size=config.training_contrastive.batch_size,
+                              sampler=sampler,
+                              shuffle=(not is_distributed),
+                              num_workers=config.training_contrastive.num_workers)
 
     model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_class,
                           feat_dim=config.training_contrastive.feat_dim,
@@ -195,7 +213,6 @@ def train_uvp(config, console):
     console.info(f"The model has approximately {num_params:.2f} million parameters.")
 
     model.to(device)
-
     # test memory usage
     # console.info(memory_usage(config, model, device))
 
@@ -213,6 +230,9 @@ def train_uvp(config, console):
         model.to(device)
     else:
         latest_epoch = 0
+
+    if world_size > 1:
+        model = DDP(model, device_ids=[rank])
 
     # Loss criterion and optimizer
     if config.training_contrastive.loss == 'proco':
@@ -252,6 +272,9 @@ def train_uvp(config, console):
         model.train()
         running_loss = 0.0
         running_corrects = 0
+
+        if is_distributed and sampler is not None:
+            sampler.set_epoch(epoch)
 
         adjust_lr(optimizer, epoch, config)
 
@@ -332,139 +355,140 @@ def train_uvp(config, console):
             console.info(f"Model weights saved to {saved_weights_file}")
             torch.save(model.state_dict(), saved_weights_file)
 
-    # Create a plot of the loss values
-    plot_loss(ce_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
-    plot_loss(scl_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='SCL_loss.png')
-    plot_loss(top1_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='ACC.png')
+    if rank == 0:
+        # Create a plot of the loss values
+        plot_loss(ce_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
+        plot_loss(scl_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='SCL_loss.png')
+        plot_loss(top1_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='ACC.png')
 
-    # Save the model's state dictionary to a file
-    saved_weights = "model_weights_final.pth"
-    saved_weights_file = os.path.join(config.training_path, saved_weights)
+        # Save the model's state dictionary to a file
+        saved_weights = "model_weights_final.pth"
+        saved_weights_file = os.path.join(config.training_path, saved_weights)
 
-    torch.save(model.state_dict(), saved_weights_file)
+        torch.save(model.state_dict(), saved_weights_file)
 
-    console.info(f"Final model weights saved to {saved_weights_file}")
+        console.info(f"Final model weights saved to {saved_weights_file}")
 
-    # Create uvp dataset datasets for training and validation
-    if config.phase == 'train_val':
-        console.info('Testing model with validation subset')
-        train_dataset.phase = 'val'
-        val_dataset = train_dataset
+        # Create uvp dataset datasets for training and validation
+        if config.phase == 'train_val':
+            console.info('Testing model with validation subset')
+            train_dataset.phase = 'val'
+            val_dataset = train_dataset
 
-        val_loader = DataLoader(val_dataset,
-                                batch_size=config.training_contrastive.batch_size,
-                                shuffle=True)
+            val_loader = DataLoader(val_dataset,
+                                    batch_size=config.training_contrastive.batch_size,
+                                    shuffle=True)
 
-    elif config.input_csv_test is not None:
-        console.info('Testing model with folder test')
+        elif config.input_csv_test is not None:
+            console.info('Testing model with folder test')
 
-        test_dataset = UvpDataset(root_dir=config.input_folder_test,
-                                  num_class=config.sampling.num_class,
-                                  csv_file=config.input_csv_test,
-                                  transform=transform_val,
-                                  phase='test',
-                                  gray=config.training_contrastive.gray)
+            test_dataset = UvpDataset(root_dir=config.input_folder_test,
+                                      num_class=config.sampling.num_class,
+                                      csv_file=config.input_csv_test,
+                                      transform=transform_val,
+                                      phase='test',
+                                      gray=config.training_contrastive.gray)
 
-        val_loader = DataLoader(test_dataset,
-                                batch_size=config.classifier.batch_size,
-                                shuffle=True,
-                                num_workers=config.training_contrastive.num_workers)
-    else:
-        console.quit('no data for testing model')
+            val_loader = DataLoader(test_dataset,
+                                    batch_size=config.classifier.batch_size,
+                                    shuffle=True,
+                                    num_workers=config.training_contrastive.num_workers)
+        else:
+            console.quit('no data for testing model')
 
-    # Evaluation loop
-    model.eval()
-    all_labels = []
-    all_preds = []
-    batch_time = AverageMeter('Time', ':6.3f')
-    ce_loss_all = AverageMeter('CE_Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
+        # Evaluation loop
+        model.eval()
+        all_labels = []
+        all_preds = []
+        batch_time = AverageMeter('Time', ':6.3f')
+        ce_loss_all = AverageMeter('CE_Loss', ':.4e')
+        top1 = AverageMeter('Acc@1', ':6.2f')
 
-    total_logits = torch.empty((0, config.sampling.num_class)).to(device)
-    total_labels = torch.empty(0, dtype=torch.long).to(device)
+        total_logits = torch.empty((0, config.sampling.num_class)).to(device)
+        total_labels = torch.empty(0, dtype=torch.long).to(device)
 
-    with torch.no_grad():
-        end = time.time()
-        for images, labels, img_names in val_loader:
-            images, labels = images.to(device), labels.to(device)
+        with torch.no_grad():
+            end = time.time()
+            for images, labels, img_names in val_loader:
+                images, labels = images.to(device), labels.to(device)
 
-            _, ce_logits, _ = model(images)
-            logits = ce_logits
+                _, ce_logits, _ = model(images)
+                logits = ce_logits
 
-            total_logits = torch.cat((total_logits, logits))
-            total_labels = torch.cat((total_labels, labels))
+                total_logits = torch.cat((total_logits, logits))
+                total_labels = torch.cat((total_labels, labels))
 
-            batch_time.update(time.time() - end)
+                batch_time.update(time.time() - end)
 
-            probs, preds = F.softmax(logits, dim=1).max(dim=1)
-            save_image = False
-            if save_image:
-                for i in range(len(preds)):
-                    int_label = preds[i].item()
-                    string_label = val_loader.dataset.get_string_label(int_label)
-                    image_name = img_names[i]
-                    image_path = os.path.join(config.training_path, 'output/', string_label, image_name.replace('output/', ''))
+                probs, preds = F.softmax(logits, dim=1).max(dim=1)
+                save_image = False
+                if save_image:
+                    for i in range(len(preds)):
+                        int_label = preds[i].item()
+                        string_label = val_loader.dataset.get_string_label(int_label)
+                        image_name = img_names[i]
+                        image_path = os.path.join(config.training_path, 'output/', string_label, image_name.replace('output/', ''))
 
-                    if not os.path.exists(os.path.dirname(image_path)):
-                        os.makedirs(os.path.dirname(image_path))
+                        if not os.path.exists(os.path.dirname(image_path)):
+                            os.makedirs(os.path.dirname(image_path))
 
-                    input_path = os.path.join(val_loader.dataset.root_dir, image_name)
-                    shutil.copy(input_path, image_path)
+                        input_path = os.path.join(val_loader.dataset.root_dir, image_name)
+                        shutil.copy(input_path, image_path)
 
-        # total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
-        # total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
-        #
-        # dist.all_gather(total_logits_list, total_logits)
-        # dist.all_gather(total_labels_list, total_labels)
-        #
-        # total_logits = torch.cat(total_logits_list, dim=0)
-        # total_labels = torch.cat(total_labels_list, dim=0)
+            # total_logits_list = [torch.zeros_like(total_logits) for _ in range(config.world_size)]
+            # total_labels_list = [torch.zeros_like(total_labels) for _ in range(config.world_size)]
+            #
+            # dist.all_gather(total_logits_list, total_logits)
+            # dist.all_gather(total_labels_list, total_labels)
+            #
+            # total_logits = torch.cat(total_logits_list, dim=0)
+            # total_labels = torch.cat(total_labels_list, dim=0)
 
-        ce_loss = criterion_ce(total_logits, total_labels)
-        acc1 = accuracy(total_logits, total_labels, topk=(1,))
+            ce_loss = criterion_ce(total_logits, total_labels)
+            acc1 = accuracy(total_logits, total_labels, topk=(1,))
 
-        ce_loss_all.update(ce_loss.item(), 1)
-        top1.update(acc1[0].item(), 1)
+            ce_loss_all.update(ce_loss.item(), 1)
+            top1.update(acc1[0].item(), 1)
 
-        # if tf_writer is not None:
-        #     tf_writer.add_scalar('CE loss/val', ce_loss_all.avg, epoch)
-        #     tf_writer.add_scalar('acc/val_top1', top1.avg, epoch)
+            # if tf_writer is not None:
+            #     tf_writer.add_scalar('CE loss/val', ce_loss_all.avg, epoch)
+            #     tf_writer.add_scalar('acc/val_top1', top1.avg, epoch)
 
-        all_probs, all_preds = F.softmax(total_logits, dim=1).max(dim=1)
-        many_acc_top1, median_acc_top1, low_acc_top1 = shot_acc(all_preds, total_labels, train_loader, acc_per_cls=False)
-        acc1 = top1.avg
-        many = many_acc_top1*100
-        med = median_acc_top1*100
-        few = low_acc_top1*100
-        # print('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
-        console.info('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+            all_probs, all_preds = F.softmax(total_logits, dim=1).max(dim=1)
+            many_acc_top1, median_acc_top1, low_acc_top1 = shot_acc(all_preds, total_labels, train_loader, acc_per_cls=False)
+            acc1 = top1.avg
+            many = many_acc_top1*100
+            med = median_acc_top1*100
+            few = low_acc_top1*100
+            # print('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
+            console.info('Prec@1: {:.3f}, Many Prec@1: {:.3f}, Med Prec@1: {:.3f}, Few Prec@1: {:.3f}'.format(acc1, many, med, few))
 
-    total_labels = total_labels.cpu().numpy()
-    all_preds = all_preds.cpu().numpy()
+        total_labels = total_labels.cpu().numpy()
+        all_preds = all_preds.cpu().numpy()
 
-    report = classification_report(
-        total_labels,
-        all_preds,
-        target_names=train_dataset.label_to_int,
-        digits=6,
-    )
+        report = classification_report(
+            total_labels,
+            all_preds,
+            target_names=train_dataset.label_to_int,
+            digits=6,
+        )
 
-    conf_mtx = confusion_matrix(
-        total_labels,
-        all_preds,
-    )
+        conf_mtx = confusion_matrix(
+            total_labels,
+            all_preds,
+        )
 
-    df = report_to_df(report)
-    report_filename = os.path.join(config.training_path, 'report_evaluation.csv')
-    df.to_csv(report_filename)
+        df = report_to_df(report)
+        report_filename = os.path.join(config.training_path, 'report_evaluation.csv')
+        df.to_csv(report_filename)
 
-    df = pd.DataFrame(conf_mtx)
-    conf_mtx_filename = os.path.join(config.training_path, 'conf_matrix_evaluation.csv')
-    df.to_csv(conf_mtx_filename)
+        df = pd.DataFrame(conf_mtx)
+        conf_mtx_filename = os.path.join(config.training_path, 'conf_matrix_evaluation.csv')
+        df.to_csv(conf_mtx_filename)
 
-    console.info('************* Evaluation Report *************')
-    console.info(report)
-    console.save_log(config.training_path)
+        console.info('************* Evaluation Report *************')
+        console.info(report)
+        console.save_log(config.training_path)
 
 
 def train_imagenet(config, console):
