@@ -355,6 +355,9 @@ def train_uvp(rank, world_size, config, console):
             console.info(f"Model weights saved to {saved_weights_file}")
             torch.save(model.state_dict(), saved_weights_file)
 
+        if is_distributed:
+            dist.barrier()
+
     if rank == 0:
         # Create a plot of the loss values
         plot_loss(ce_loss_all_avg, num_epoch=(config.training_contrastive.num_epoch - latest_epoch), training_path=config.training_path, name='CE_loss.png')
@@ -369,6 +372,10 @@ def train_uvp(rank, world_size, config, console):
 
         console.info(f"Final model weights saved to {saved_weights_file}")
 
+    if is_distributed:
+        dist.barrier()
+
+    if rank == 0:
         # Create uvp dataset datasets for training and validation
         if config.phase == 'train_val':
             console.info('Testing model with validation subset')
