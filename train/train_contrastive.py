@@ -290,36 +290,60 @@ def train_uvp(rank, world_size, config, console):
         end = time.time()
 
         for batch_idx, (images, labels, _) in enumerate(train_loader):
-            images = torch.cat([images[0], images[1], images[2]], dim=0)
-            images, labels = images.to(device), labels.to(device)
             batch_size = labels.shape[0]
+            labels = labels.to(device)
 
-            feat_mlp, ce_logits, _ = model(images)
-            _, f2, f3 = torch.split(feat_mlp, [batch_size, batch_size, batch_size], dim=0)
-            ce_logits, _, __ = torch.split(ce_logits, [batch_size, batch_size, batch_size], dim=0)
+            mini_batch_size = batch_size // config.training_contrastive.accumulation_steps
 
-            contrast_logits1 = criterion_scl(f2, labels)
-            contrast_logits2 = criterion_scl(f3, labels)
-            contrast_logits1, contrast_logits2 = contrast_logits1.to(device), contrast_logits2.to(device)
+            images_0_mini_batches = torch.split(images[0], mini_batch_size)
+            images_1_mini_batches = torch.split(images[1], mini_batch_size)
+            images_2_mini_batches = torch.split(images[2], mini_batch_size)
+            labels_mini_batches = torch.split(labels, mini_batch_size)
 
-            contrast_logits = (contrast_logits1 + contrast_logits2) / 2
+            optimizer.zero_grad()
 
-            scl_loss = (criterion_ce(contrast_logits1, labels) + criterion_ce(contrast_logits2, labels)) / 2
-            ce_loss = criterion_ce(ce_logits, labels)
+            aggregated_logits = []
 
-            alpha = 1
-            logits = ce_logits + alpha * contrast_logits
-            loss = ce_loss + alpha * scl_loss
+            for i in range(len(images_0_mini_batches)):
+                mini_images = torch.cat([images_0_mini_batches[i], images_1_mini_batches[i], images_2_mini_batches[i]],
+                                        dim=0)
+                mini_labels = labels_mini_batches[i]
+                mini_images, mini_labels = mini_images.to(device), mini_labels.to(device)
+
+                feat_mlp, ce_logits, _ = model(mini_images)
+                _, f2, f3 = torch.split(feat_mlp, [mini_batch_size, mini_batch_size, mini_batch_size], dim=0)
+                ce_logits, _, __ = torch.split(ce_logits, [mini_batch_size, mini_batch_size, mini_batch_size], dim=0)
+
+                contrast_logits1 = criterion_scl(f2, mini_labels)
+                contrast_logits2 = criterion_scl(f3, mini_labels)
+                contrast_logits1, contrast_logits2 = contrast_logits1.to(device), contrast_logits2.to(device)
+
+                contrast_logits = (contrast_logits1 + contrast_logits2) / 2
+
+                scl_loss = (criterion_ce(contrast_logits1, mini_labels) + criterion_ce(contrast_logits2, mini_labels)) / 2
+                ce_loss = criterion_ce(ce_logits, mini_labels)
+
+                alpha = 1
+                logits = ce_logits + alpha * contrast_logits
+                loss = ce_loss + alpha * scl_loss
+
+                # Accumulate gradients
+                loss.backward()
+                aggregated_logits.append(logits)
+
+            optimizer.step()
+            aggregated_logits = torch.cat(aggregated_logits, dim=0)
+            aggregated_logits = aggregated_logits.to(device)
 
             ce_loss_all.update(ce_loss.item(), batch_size)
             scl_loss_all.update(scl_loss.item(), batch_size)
 
-            acc1 = accuracy(logits, labels, topk=(1,))
+            acc1 = accuracy(aggregated_logits, labels, topk=(1,))
             top1.update(acc1[0].item(), batch_size)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # optimizer.zero_grad()
+            # loss.backward()
+            # optimizer.step()
 
             batch_time.update(time.time() - end)
             end = time.time()
