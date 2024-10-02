@@ -1,6 +1,6 @@
 base:
   cpu: False
-  all_gpu: False
+  all_gpu: True
   gpu_index: 0
 
 
