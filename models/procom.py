@@ -28,7 +28,7 @@ def miller_recurrence(nu, x):
             elif i == nu:
                 scale0 += torch.log(I_n)
 
-            I_n = torch.ones(1, dtype=torch.float64).cuda()
+            I_n = torch.ones(1, dtype=torch.float64).to(device)
             I_n, I_n1 = 2*i/x*I_n + I_n1, I_n
 
         else:
