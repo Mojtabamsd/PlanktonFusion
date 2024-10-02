@@ -691,17 +691,23 @@ def train_imagenet(rank, world_size, config, console):
         end = time.time()
 
         for batch_idx, (images, labels) in enumerate(train_loader):
-            images = torch.cat([images[0], images[1], images[2]], dim=0)
-            images, labels = images.to(device), labels.to(device)
             batch_size = labels.shape[0]
 
             mini_batch_size = batch_size // config.training_contrastive.accumulation_steps
-            images_mini_batches = torch.split(images, mini_batch_size)
+
+            images_0_mini_batches = torch.split(images[0], mini_batch_size)
+            images_1_mini_batches = torch.split(images[1], mini_batch_size)
+            images_2_mini_batches = torch.split(images[2], mini_batch_size)
             labels_mini_batches = torch.split(labels, mini_batch_size)
 
             optimizer.zero_grad()
 
-            for mini_images, mini_labels in zip(images_mini_batches, labels_mini_batches):
+            for i in range(len(images_0_mini_batches)):
+                mini_images = torch.cat([images_0_mini_batches[i], images_1_mini_batches[i], images_2_mini_batches[i]],
+                                        dim=0)
+                mini_labels = labels_mini_batches[i]
+
+                mini_images, mini_labels = mini_images.to(device), mini_labels.to(device)
 
                 feat_mlp, ce_logits, _ = model(mini_images)
                 _, f2, f3 = torch.split(feat_mlp, [mini_batch_size, mini_batch_size, mini_batch_size], dim=0)
