@@ -110,6 +110,9 @@ def train_contrastive(config_path, input_path, output_path):
 
 
 def setup(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
     if world_size > 1:
         dist.init_process_group(
             backend='nccl',  # Use 'gloo' or 'nccl' for multi-GPU
