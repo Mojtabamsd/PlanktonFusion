@@ -695,22 +695,35 @@ def train_imagenet(rank, world_size, config, console):
             images, labels = images.to(device), labels.to(device)
             batch_size = labels.shape[0]
 
-            feat_mlp, ce_logits, _ = model(images)
-            _, f2, f3 = torch.split(feat_mlp, [batch_size, batch_size, batch_size], dim=0)
-            ce_logits, _, __ = torch.split(ce_logits, [batch_size, batch_size, batch_size], dim=0)
+            mini_batch_size = batch_size // config.training_contrastive.accumulation_steps
+            images_mini_batches = torch.split(images, mini_batch_size)
+            labels_mini_batches = torch.split(labels, mini_batch_size)
 
-            contrast_logits1 = criterion_scl(f2, labels)
-            contrast_logits2 = criterion_scl(f3, labels)
-            contrast_logits1, contrast_logits2 = contrast_logits1.to(device), contrast_logits2.to(device)
+            optimizer.zero_grad()
 
-            contrast_logits = (contrast_logits1 + contrast_logits2) / 2
+            for mini_images, mini_labels in zip(images_mini_batches, labels_mini_batches):
 
-            scl_loss = (criterion_ce(contrast_logits1, labels) + criterion_ce(contrast_logits2, labels)) / 2
-            ce_loss = criterion_ce(ce_logits, labels)
+                feat_mlp, ce_logits, _ = model(mini_images)
+                _, f2, f3 = torch.split(feat_mlp, [mini_batch_size, mini_batch_size, mini_batch_size], dim=0)
+                ce_logits, _, __ = torch.split(ce_logits, [mini_batch_size, mini_batch_size, mini_batch_size], dim=0)
 
-            alpha = 1
-            logits = ce_logits + alpha * contrast_logits
-            loss = ce_loss + alpha * scl_loss
+                contrast_logits1 = criterion_scl(f2, mini_labels)
+                contrast_logits2 = criterion_scl(f3, mini_labels)
+                contrast_logits1, contrast_logits2 = contrast_logits1.to(device), contrast_logits2.to(device)
+
+                contrast_logits = (contrast_logits1 + contrast_logits2) / 2
+
+                scl_loss = (criterion_ce(contrast_logits1, mini_labels) + criterion_ce(contrast_logits2, mini_labels)) / 2
+                ce_loss = criterion_ce(ce_logits, mini_labels)
+
+                alpha = 1
+                logits = ce_logits + alpha * contrast_logits
+                loss = ce_loss + alpha * scl_loss
+
+                # Accumulate gradients
+                loss.backward()
+
+            optimizer.step()
 
             ce_loss_all.update(ce_loss.item(), batch_size)
             scl_loss_all.update(scl_loss.item(), batch_size)
@@ -718,9 +731,9 @@ def train_imagenet(rank, world_size, config, console):
             acc1 = accuracy(logits, labels, topk=(1,))
             top1.update(acc1[0].item(), batch_size)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # optimizer.zero_grad()
+            # loss.backward()
+            # optimizer.step()
 
             batch_time.update(time.time() - end)
             end = time.time()
