@@ -734,6 +734,7 @@ def train_imagenet(rank, world_size, config, console):
 
             optimizer.step()
             aggregated_logits = torch.cat(aggregated_logits, dim=0)
+            aggregated_logits = aggregated_logits.to(device)
 
             ce_loss_all.update(ce_loss.item(), batch_size)
             scl_loss_all.update(scl_loss.item(), batch_size)
