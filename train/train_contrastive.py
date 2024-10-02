@@ -702,6 +702,8 @@ def train_imagenet(rank, world_size, config, console):
 
             optimizer.zero_grad()
 
+            aggregated_logits = []
+
             for i in range(len(images_0_mini_batches)):
                 mini_images = torch.cat([images_0_mini_batches[i], images_1_mini_batches[i], images_2_mini_batches[i]],
                                         dim=0)
@@ -728,13 +730,15 @@ def train_imagenet(rank, world_size, config, console):
 
                 # Accumulate gradients
                 loss.backward()
+                aggregated_logits.append(logits)
 
             optimizer.step()
+            aggregated_logits = torch.cat(aggregated_logits, dim=0)
 
             ce_loss_all.update(ce_loss.item(), batch_size)
             scl_loss_all.update(scl_loss.item(), batch_size)
 
-            acc1 = accuracy(logits, labels, topk=(1,))
+            acc1 = accuracy(aggregated_logits, labels, topk=(1,))
             top1.update(acc1[0].item(), batch_size)
 
             # optimizer.zero_grad()
