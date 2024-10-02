@@ -112,7 +112,7 @@ def train_contrastive(config_path, input_path, output_path):
 def setup(rank, world_size):
     if world_size > 1:
         dist.init_process_group(
-            backend='gloo',  # Use 'nccl' for multi-GPU
+            backend='nccl',  # Use 'gloo' or 'nccl' for multi-GPU
             init_method='env://',
             rank=rank,
             world_size=world_size
