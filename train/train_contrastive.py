@@ -90,8 +90,8 @@ def train_contrastive(config_path, input_path, output_path):
     # config.world_size = torch.cuda.device_count()
 
     if config.base.all_gpu:
-        # config.world_size = torch.cuda.device_count()
-        world_size = 1
+        world_size = torch.cuda.device_count()
+        console.info(f"Number of GPU available:  {world_size}")
     else:
         world_size = 1
 
