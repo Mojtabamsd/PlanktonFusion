@@ -692,6 +692,7 @@ def train_imagenet(rank, world_size, config, console):
 
         for batch_idx, (images, labels) in enumerate(train_loader):
             batch_size = labels.shape[0]
+            labels = labels.to(device)
 
             mini_batch_size = batch_size // config.training_contrastive.accumulation_steps
 
