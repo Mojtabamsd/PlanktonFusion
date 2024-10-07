@@ -8,7 +8,7 @@ from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
 from models import resnext
 from dataset.imagenet import ImageNetLT
-from dataset.inatural import INaturalist
+from dataset.inat import INaturalist
 import math
 import os
 import shutil
@@ -104,7 +104,7 @@ def train_contrastive(config_path, input_path, output_path):
         else:
             train_uvp(config.base.gpu_index, world_size, config, console)
 
-    elif config.training_contrastive.dataset == 'imagenet' or config.training_contrastive.dataset == 'inatural':
+    elif config.training_contrastive.dataset == 'imagenet' or config.training_contrastive.dataset == 'inat':
         if world_size > 1:
             mp.spawn(train_imagenet_inatural, args=(world_size, config, console), nprocs=world_size, join=True)
         else:
@@ -537,8 +537,8 @@ def train_imagenet_inatural(rank, world_size, config, console):
     device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
     console.info(f"Running on:  {device}")
 
-    # number of classes for imagenet or inatural
-    if config.training_contrastive.dataset == 'inatural':
+    # number of classes for imagenet or inat
+    if config.training_contrastive.dataset == 'inat':
         config.sampling.num_classes = 8142
 
         txt_train = f'iNaturalist18/iNaturalist18_train.txt'
@@ -613,7 +613,7 @@ def train_imagenet_inatural(rank, world_size, config, console):
     #     txt=txt_val,
     #     transform=transform_val, train=False)
 
-    if config.training_contrastive.dataset == 'inatural':
+    if config.training_contrastive.dataset == 'inat':
         train_dataset = INaturalist(
             root=config.input_folder_train,
             txt=txt_train,
@@ -844,7 +844,7 @@ def train_imagenet_inatural(rank, world_size, config, console):
         dist.barrier()
 
     if rank == 0:
-        if config.training_contrastive.dataset == 'inatural':
+        if config.training_contrastive.dataset == 'inat':
             txt_test = f'iNaturalist18/iNaturalist18_val.txt'
             test_dataset = INaturalist(
                 root=config.input_path,

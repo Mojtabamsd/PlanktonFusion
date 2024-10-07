@@ -54,7 +54,7 @@ training:
 
 
 training_contrastive:
-  dataset: 'imagenet' # choose uvp or imagenet or inatural
+  dataset: 'imagenet' # choose uvp or imagenet or inat
   architecture_type: 'resnet50' # choose 'resnet18', 'resnet34', 'resnet50' or 'resnext50'
   batch_size: 256
   accumulation_steps: 4  #for mini batch size --- the training performs like batch_size // accumulation_steps i.e. 256=64*4
