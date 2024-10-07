@@ -8,6 +8,7 @@ from dataset.uvp_dataset import UvpDataset
 from models.classifier_cnn import count_parameters
 from models import resnext
 from dataset.imagenet import ImageNetLT
+from dataset.inatural import INaturalist
 import math
 import os
 import shutil
@@ -103,11 +104,11 @@ def train_contrastive(config_path, input_path, output_path):
         else:
             train_uvp(config.base.gpu_index, world_size, config, console)
 
-    elif config.training_contrastive.dataset == 'imagenet':
+    elif config.training_contrastive.dataset == 'imagenet' or config.training_contrastive.dataset == 'inatural':
         if world_size > 1:
-            mp.spawn(train_imagenet, args=(world_size, config, console), nprocs=world_size, join=True)
+            mp.spawn(train_imagenet_inatural, args=(world_size, config, console), nprocs=world_size, join=True)
         else:
-            train_imagenet(config.base.gpu_index, world_size, config, console)
+            train_imagenet_inatural(config.base.gpu_index, world_size, config, console)
 
 
 def setup(rank, world_size):
@@ -526,7 +527,7 @@ def train_uvp(rank, world_size, config, console):
         console.save_log(config.training_path)
 
 
-def train_imagenet(rank, world_size, config, console):
+def train_imagenet_inatural(rank, world_size, config, console):
 
     if world_size > 1:
         setup(rank, world_size)
@@ -536,12 +537,19 @@ def train_imagenet(rank, world_size, config, console):
     device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
     console.info(f"Running on:  {device}")
 
-    # number of classes for imagenet
-    config.sampling.num_classes = 1000
+    # number of classes for imagenet or inatural
+    if config.training_contrastive.dataset == 'inatural':
+        config.sampling.num_classes = 8142
 
-    txt_train = f'ImageNet_LT/ImageNet_LT_train.txt'
-    # txt_val = f'ImageNet_LT/ImageNet_LT_val.txt'
-    normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        txt_train = f'iNaturalist18/iNaturalist18_train.txt'
+        normalize = transforms.Normalize((0.466, 0.471, 0.380), (0.195, 0.194, 0.192))
+
+    elif config.training_contrastive.dataset == 'imagenet':
+        config.sampling.num_classes = 1000
+
+        txt_train = f'ImageNet_LT/ImageNet_LT_train.txt'
+        # txt_val = f'ImageNet_LT/ImageNet_LT_val.txt'
+        normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 
     # Define data transformations
     randaug_m = 10
@@ -605,10 +613,16 @@ def train_imagenet(rank, world_size, config, console):
     #     txt=txt_val,
     #     transform=transform_val, train=False)
 
-    train_dataset = ImageNetLT(
-        root=config.input_folder_train,
-        txt=txt_train,
-        transform=transform_train)
+    if config.training_contrastive.dataset == 'inatural':
+        train_dataset = INaturalist(
+            root=config.input_folder_train,
+            txt=txt_train,
+            transform=transform_train)
+    elif config.training_contrastive.dataset == 'imagenet':
+        train_dataset = ImageNetLT(
+            root=config.input_folder_train,
+            txt=txt_train,
+            transform=transform_train)
 
     console.info(f'===> Training data length {len(train_dataset)}')
     # console.info(f'===> Validation data length {len(val_dataset)}')
@@ -628,7 +642,7 @@ def train_imagenet(rank, world_size, config, console):
     #     val_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
     #     num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=val_sampler)
 
-    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=1000,
+    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_classes,
                           feat_dim=config.training_contrastive.feat_dim,
                           use_norm=config.training_contrastive.use_norm,
                           gray=config.training_contrastive.gray)
@@ -668,13 +682,13 @@ def train_imagenet(rank, world_size, config, console):
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
                                   temperature=config.training_contrastive.temp,
-                                  num_classes=1000,
+                                  num_classes=config.sampling.num_classes,
                                   device=device)
     elif config.training_contrastive.loss == 'procom':
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoMLoss(contrast_dim=config.training_contrastive.feat_dim,
                                    temperature=config.training_contrastive.temp,
-                                   num_classes=1000,
+                                   num_classes=config.sampling.num_classes,
                                    max_modes=config.training_contrastive.max_modes,
                                    device=device)
 
@@ -830,11 +844,18 @@ def train_imagenet(rank, world_size, config, console):
         dist.barrier()
 
     if rank == 0:
-        txt_test = f'ImageNet_LT/ImageNet_LT_test.txt'
-        test_dataset = ImageNetLT(
-            root=config.input_path,
-            txt=txt_test,
-            transform=transform_val, train=False)
+        if config.training_contrastive.dataset == 'inatural':
+            txt_test = f'iNaturalist18/iNaturalist18_val.txt'
+            test_dataset = INaturalist(
+                root=config.input_path,
+                txt=txt_test,
+                transform=transform_val, train=False)
+        elif config.training_contrastive.dataset == 'imagenet':
+            txt_test = f'ImageNet_LT/ImageNet_LT_test.txt'
+            test_dataset = ImageNetLT(
+                root=config.input_path,
+                txt=txt_test,
+                transform=transform_val, train=False)
 
         test_loader = DataLoader(test_dataset,
                                  batch_size=config.training_contrastive.batch_size,
@@ -849,7 +870,7 @@ def train_imagenet(rank, world_size, config, console):
         ce_loss_all = AverageMeter('CE_Loss', ':.4e')
         top1 = AverageMeter('Acc@1', ':6.2f')
 
-        total_logits = torch.empty((0, 1000)).to(device)
+        total_logits = torch.empty((0, config.sampling.num_classes)).to(device)
         total_labels = torch.empty(0, dtype=torch.long).to(device)
 
         with torch.no_grad():
