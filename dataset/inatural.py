@@ -1,22 +1,15 @@
-import os
 from torch.utils.data import Dataset
+import os
 from PIL import Image
-import random
 
 
-class ImageNetLT(Dataset):
-
-    def __init__(self, root, txt, transform=None, train=True, class_balance=False):
+class INaturalist(Dataset):
+    def __init__(self, root, txt, transform=None, train=True):
         self.img_path = []
         self.labels = []
         self.transform = transform
-        self.num_classes = 1000
+        self.num_classes = 8142
         self.train = train
-        self.class_balance = class_balance
-
-        project_root = os.path.dirname(os.path.abspath(__file__))
-        txt = os.path.normpath(os.path.join(project_root, txt))
-
         with open(txt) as f:
             for line in f:
                 self.img_path.append(os.path.join(root, line.split()[0]))
@@ -33,14 +26,8 @@ class ImageNetLT(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index):
-        if self.class_balance:
-            label = random.randint(0, self.num_classes - 1)
-            index = random.choice(self.class_data[label])
-            path = self.img_path[index]
-
-        else:
-            path = self.img_path[index]
-            label = self.labels[index]
+        path = self.img_path[index]
+        label = self.labels[index]
 
         with open(path, 'rb') as f:
             sample = Image.open(f).convert('RGB')
