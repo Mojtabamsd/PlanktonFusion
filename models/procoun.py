@@ -236,10 +236,14 @@ class ProCoUNLoss(nn.Module):
         logc = self.estimator_old.logc.detach()
         kappa = self.estimator_old.kappa.detach()
 
-        class_prototypes = Ave[labels]
-        cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
-        cos_sim = torch.clamp(cos_sim, -1.0, 1.0)
-        uncertainty = 1 - cos_sim
+        uncertainty_metric = 'kappa'  # kappa or cosine
+        if uncertainty_metric == 'cosine':
+            class_prototypes = Ave[labels]
+            cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
+            cos_sim = torch.clamp(cos_sim, -1.0, 1.0)
+            uncertainty = 1 - cos_sim
+        else:
+            uncertainty = 1 / (kappa[labels] + 1e-8)
 
         if self.sampling_option == 'over_sample':
             sampling_probs = uncertainty.clone()
@@ -270,11 +274,14 @@ class ProCoUNLoss(nn.Module):
 
             features = features[indices]
             labels = labels[indices]
-            # uncertainty = uncertainty[indices]
-            class_prototypes = class_prototypes[indices]
+            uncertainty = uncertainty[indices]
 
-        cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
-        uncertainty = 1 - cos_sim
+            if uncertainty_metric == 'cosine':
+                class_prototypes = class_prototypes[indices]
+
+        if uncertainty_metric == 'cosine':
+            cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
+            uncertainty = 1 - cos_sim
 
         N = features.size(0)
 
