@@ -22,6 +22,7 @@ from tools.augmentation import ResizeAndPad
 from models.loss import LogitAdjust
 from models.proco import ProCoLoss
 from models.procom import ProCoMLoss
+from models.procoun import ProCoUNLoss
 import time
 import torch.nn.functional as F
 import torch.multiprocessing as mp
@@ -253,6 +254,12 @@ def train_uvp(rank, world_size, config, console):
                                    num_classes=config.sampling.num_class,
                                    max_modes=config.training_contrastive.max_modes,
                                    device=device)
+    elif config.training_contrastive.loss == 'procoun':
+        criterion_ce = LogitAdjust(class_counts, device=device)
+        criterion_scl = ProCoUNLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                    temperature=config.training_contrastive.temp,
+                                    num_classes=config.sampling.num_class,
+                                    device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
@@ -691,6 +698,12 @@ def train_imagenet_inatural(rank, world_size, config, console):
                                    num_classes=config.sampling.num_classes,
                                    max_modes=config.training_contrastive.max_modes,
                                    device=device)
+    elif config.training_contrastive.loss == 'procoun':
+        criterion_ce = LogitAdjust(cls_num_list, device=device)
+        criterion_scl = ProCoUNLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                    temperature=config.training_contrastive.temp,
+                                    num_classes=config.sampling.num_classes,
+                                    device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
