@@ -285,6 +285,9 @@ def train_uvp(rank, world_size, config, console):
         running_loss = 0.0
         running_corrects = 0
 
+        if hasattr(criterion_scl, "_hook_before_epoch"):
+            criterion_scl._hook_before_epoch()
+
         if is_distributed and sampler is not None:
             sampler.set_epoch(epoch)
 
@@ -728,6 +731,9 @@ def train_imagenet_inatural(rank, world_size, config, console):
         model.train()
         running_loss = 0.0
         running_corrects = 0
+
+        if hasattr(criterion_scl, "_hook_before_epoch"):
+            criterion_scl._hook_before_epoch()
 
         if is_distributed and sampler is not None:
             sampler.set_epoch(epoch)

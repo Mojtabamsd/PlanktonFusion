@@ -264,7 +264,7 @@ class ProCoMLoss(nn.Module):
         self.estimator_old.reload_memory()
         self.estimator.reload_memory()
 
-    def _hook_before_epoch(self, epoch, epochs):
+    def _hook_before_epoch(self):
         # exchange ave and covariances
 
         self.estimator_old.Ave = self.estimator.Ave
