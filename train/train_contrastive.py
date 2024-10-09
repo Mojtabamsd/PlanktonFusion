@@ -232,7 +232,7 @@ def train_uvp(rank, world_size, config, console):
         saved_weights_file = os.path.join(config.training_path, latest_pth_file)
 
         console.info("Model loaded from ", saved_weights_file)
-        model.load_state_dict(torch.load(saved_weights_file, map_location=device))
+        model.load_state_dict(torch.load(saved_weights_file, map_location=device), strict=False)
         model.to(device)
     else:
         latest_epoch = 0
