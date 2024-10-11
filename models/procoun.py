@@ -186,7 +186,7 @@ class EstimatorCV():
 
 
 class ProCoUNLoss(nn.Module):
-    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0', sampling_option='down_sample'):
+    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0', sampling_option='over_sample'):
         super(ProCoUNLoss, self).__init__()
         self.temperature = temperature
         self.num_classes = num_classes
@@ -291,7 +291,7 @@ class ProCoUNLoss(nn.Module):
 
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
         uncertainty = uncertainty.unsqueeze(1)  # [N, 1]
-        weight = (1 - uncertainty)
+        weight = uncertainty
 
         adjusted_logits = contrast_logits * weight
 
