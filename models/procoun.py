@@ -186,7 +186,7 @@ class EstimatorCV():
 
 
 class ProCoUNLoss(nn.Module):
-    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0', sampling_option='over_sample'):
+    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0', sampling_option='none'):
         super(ProCoUNLoss, self).__init__()
         self.temperature = temperature
         self.num_classes = num_classes
@@ -243,7 +243,8 @@ class ProCoUNLoss(nn.Module):
             cos_sim = torch.clamp(cos_sim, -1.0, 1.0)
             uncertainty = 1 - cos_sim
         else:
-            uncertainty = 1 / (kappa[labels] + 1e-8)
+            normalized_kappa = torch.clamp((kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8), min=0.01, max=0.99)
+            uncertainty = 1 / (normalized_kappa + 1e-8)
 
         if self.sampling_option == 'over_sample':
             sampling_probs = uncertainty.clone()
@@ -265,19 +266,19 @@ class ProCoUNLoss(nn.Module):
                 sampling_probs = sampling_probs / total_prob
 
             sampling_probs = sampling_probs.to(device)
-            if self.sampling_option == 'over_sample':
-                indices = torch.multinomial(sampling_probs, batch_size, replacement=True)
-            elif self.sampling_option == 'down_sample':
-                indices = torch.multinomial(sampling_probs, batch_size, replacement=False)
-            else:
-                indices = torch.arange(batch_size)
+        if self.sampling_option == 'over_sample':
+            indices = torch.multinomial(sampling_probs, batch_size, replacement=True)
+        elif self.sampling_option == 'down_sample':
+            indices = torch.multinomial(sampling_probs, batch_size, replacement=False)
+        else:
+            indices = torch.arange(batch_size)
 
-            features = features[indices]
-            labels = labels[indices]
-            uncertainty = uncertainty[indices]
+        features = features[indices]
+        labels = labels[indices]
+        uncertainty = uncertainty[indices]
 
-            if uncertainty_metric == 'cosine':
-                class_prototypes = class_prototypes[indices]
+        if uncertainty_metric == 'cosine':
+            class_prototypes = class_prototypes[indices]
 
         if uncertainty_metric == 'cosine':
             cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
@@ -291,8 +292,9 @@ class ProCoUNLoss(nn.Module):
 
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
         uncertainty = uncertainty.unsqueeze(1)  # [N, 1]
-        weight = uncertainty
 
+        normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
+        weight = normalized_uncertainty
         adjusted_logits = contrast_logits * weight
 
         return adjusted_logits
