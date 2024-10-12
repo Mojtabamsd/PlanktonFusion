@@ -291,9 +291,9 @@ class ProCoUNLoss(nn.Module):
         kappa_new = torch.linalg.norm(tem, dim=2)
 
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
-        uncertainty = uncertainty.unsqueeze(1)  # [N, 1]
 
         normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
+        normalized_uncertainty = normalized_uncertainty.unsqueeze(1)  # [N, 1]
         weight = normalized_uncertainty
         adjusted_logits = contrast_logits * weight
 
