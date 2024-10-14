@@ -252,37 +252,21 @@ class ProCoUNLoss(nn.Module):
             inverse_uncertainty = 1 / (uncertainty + 1e-8)
             sampling_probs = inverse_uncertainty.clone()
         else:
-            sampling_probs = None
+            sampling_probs = torch.ones_like(uncertainty)
 
-        if sampling_probs is not None:
-            sampling_probs[torch.isnan(sampling_probs)] = 0
-            sampling_probs[torch.isinf(sampling_probs)] = 0
-            sampling_probs = torch.clamp(sampling_probs, min=0)
+        sampling_probs[torch.isnan(sampling_probs)] = 0
+        sampling_probs[torch.isinf(sampling_probs)] = 0
+        sampling_probs = torch.clamp(sampling_probs, min=0)
 
-            total_prob = sampling_probs.sum()
-            if total_prob == 0 or not torch.isfinite(total_prob):
-                sampling_probs = torch.ones_like(sampling_probs) / sampling_probs.numel()
-            else:
-                sampling_probs = sampling_probs / total_prob
+        sampling_probs = sampling_probs / sampling_probs.sum()
 
-            sampling_probs = sampling_probs.to(device)
+        indices = torch.multinomial(sampling_probs, uncertainty.shape[0],
+                                    replacement=(False if self.sampling_option == 'none' else True))
+
         if self.sampling_option == 'over_sample':
-            indices = torch.multinomial(sampling_probs, batch_size, replacement=True)
+            uncertainty[indices] *= 1.5
         elif self.sampling_option == 'down_sample':
-            indices = torch.multinomial(sampling_probs, batch_size, replacement=False)
-        else:
-            indices = torch.arange(batch_size)
-
-        features = features[indices]
-        labels = labels[indices]
-        uncertainty = uncertainty[indices]
-
-        if uncertainty_metric == 'cosine':
-            class_prototypes = class_prototypes[indices]
-
-        if uncertainty_metric == 'cosine':
-            cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
-            uncertainty = 1 - cos_sim
+            uncertainty[indices] *= 0.5
 
         N = features.size(0)
 
@@ -293,9 +277,8 @@ class ProCoUNLoss(nn.Module):
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
 
         normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
-        normalized_uncertainty = normalized_uncertainty.unsqueeze(1)  # [N, 1]
-        weight = normalized_uncertainty
-        adjusted_logits = contrast_logits * weight
+        normalized_uncertainty = normalized_uncertainty.unsqueeze(0)  # [1, N]
+        adjusted_logits = contrast_logits * normalized_uncertainty
 
         return adjusted_logits
 
