@@ -243,8 +243,8 @@ class ProCoUNLoss(nn.Module):
             cos_sim = torch.clamp(cos_sim, -1.0, 1.0)
             uncertainty = 1 - cos_sim
         else:
-            # normalized_kappa = torch.clamp((kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8), min=0.01, max=0.99)
-            normalized_kappa = (kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8)
+            normalized_kappa = torch.clamp((kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8), min=0.01, max=0.99)
+            # normalized_kappa = (kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8)
             uncertainty = 1 / (normalized_kappa + 1e-8)
 
         if self.sampling_option == 'over_sample':
@@ -277,8 +277,7 @@ class ProCoUNLoss(nn.Module):
 
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
 
-        # normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
-        normalized_uncertainty = torch.log(uncertainty + 1)
+        normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
 
         weight = normalized_uncertainty.unsqueeze(0)  # [1, N]
 
