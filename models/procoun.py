@@ -238,13 +238,13 @@ class ProCoUNLoss(nn.Module):
 
         uncertainty_metric = 'kappa'  # kappa or cosine
         if uncertainty_metric == 'cosine':
-            class_prototypes = Ave[labels]
-            cos_sim = F.cosine_similarity(features, class_prototypes, dim=1)
-            cos_sim = torch.clamp(cos_sim, -1.0, 1.0)
-            uncertainty = 1 - cos_sim
+            class_prototypes = Ave_norm.unsqueeze(0)
+            features_expanded = features.unsqueeze(1)
+            cos_sim = F.cosine_similarity(features_expanded, class_prototypes, dim=2)
+            uncertainty_per_batch = 1 - torch.clamp(cos_sim, -1.0, 1.0)
+            uncertainty = uncertainty_per_batch.mean(dim=0)
         else:
             normalized_kappa = torch.clamp((kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8), min=0.01, max=0.99)
-            # normalized_kappa = (kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8)
             uncertainty = 1 / (normalized_kappa + 1e-8)
 
         if self.sampling_option == 'over_sample':
