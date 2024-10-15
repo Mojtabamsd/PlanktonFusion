@@ -245,7 +245,10 @@ class ProCoUNLoss(nn.Module):
             uncertainty = uncertainty_per_batch.mean(dim=0)
         else:
             normalized_kappa = torch.clamp((kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8), min=0.01, max=0.99)
-            uncertainty = 1 / (normalized_kappa + 1e-8)
+            # normalized_kappa = (kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8)
+            uncertainty = 1 - normalized_kappa
+            # non-linear
+            # uncertainty = 1 / (normalized_kappa + 1e-8)
 
         if self.sampling_option == 'over_sample':
             sampling_probs = uncertainty.clone()
@@ -277,7 +280,8 @@ class ProCoUNLoss(nn.Module):
 
         contrast_logits = LogRatioC.apply(kappa_new, torch.tensor(self.estimator.feature_num), logc)
 
-        normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
+        # normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
+        normalized_uncertainty = uncertainty
 
         weight = normalized_uncertainty.unsqueeze(0)  # [1, N]
 
