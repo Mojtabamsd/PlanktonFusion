@@ -236,7 +236,7 @@ class ProCoUNLoss(nn.Module):
         logc = self.estimator_old.logc.detach()
         kappa = self.estimator_old.kappa.detach()
 
-        uncertainty_metric = 'kappa'  # kappa or cosine
+        uncertainty_metric = 'cosine'  # kappa or cosine
         if uncertainty_metric == 'cosine':
             class_prototypes = Ave_norm.unsqueeze(0)
             features_expanded = features.unsqueeze(1)
@@ -283,7 +283,10 @@ class ProCoUNLoss(nn.Module):
         # normalized_uncertainty = (uncertainty - uncertainty.min()) / (uncertainty.max() - uncertainty.min() + 1e-8)
         normalized_uncertainty = uncertainty
 
-        weight = normalized_uncertainty.unsqueeze(0)  # [1, N]
+        if uncertainty_metric == 'cosine':
+            weight = uncertainty_per_batch
+        else:
+            weight = normalized_uncertainty.unsqueeze(0)  # [1, N]
 
         adjusted_logits = contrast_logits * weight
 
