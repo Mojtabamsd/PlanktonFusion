@@ -23,6 +23,7 @@ from models.loss import LogitAdjust
 from models.proco import ProCoLoss
 from models.procom import ProCoMLoss
 from models.procoun import ProCoUNLoss
+from models.procos import ProCoSLoss
 import time
 import torch.nn.functional as F
 import torch.multiprocessing as mp
@@ -196,7 +197,7 @@ def train_uvp(rank, world_size, config, console):
     total_samples = sum(class_counts)
     class_weights = [total_samples / (config.sampling.num_class * count) for count in class_counts]
     class_weights_tensor = torch.FloatTensor(class_weights)
-    class_weights_tensor = class_weights_tensor / class_weights_tensor.sum()
+    class_weights_tensor_normalize = class_weights_tensor / class_weights_tensor.sum()
 
     if is_distributed:
         sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
@@ -260,6 +261,13 @@ def train_uvp(rank, world_size, config, console):
                                     temperature=config.training_contrastive.temp,
                                     num_classes=config.sampling.num_class,
                                     device=device)
+    elif config.training_contrastive.loss == 'procos':
+        criterion_ce = LogitAdjust(class_counts, device=device)
+        criterion_scl = ProCoSLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                   class_frequencies=class_weights_tensor,
+                                   temperature=config.training_contrastive.temp,
+                                   num_classes=config.sampling.num_class,
+                                   device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
