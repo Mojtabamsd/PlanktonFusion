@@ -264,7 +264,7 @@ def train_uvp(rank, world_size, config, console):
     elif config.training_contrastive.loss == 'procos':
         criterion_ce = LogitAdjust(class_counts, device=device)
         criterion_scl = ProCoSLoss(contrast_dim=config.training_contrastive.feat_dim,
-                                   class_frequencies=class_weights_tensor,
+                                   class_frequencies=torch.FloatTensor(class_counts),
                                    temperature=config.training_contrastive.temp,
                                    num_classes=config.sampling.num_class,
                                    device=device)
