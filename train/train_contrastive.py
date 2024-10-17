@@ -557,13 +557,13 @@ def train_imagenet_inatural(rank, world_size, config, console):
 
     # number of classes for imagenet or inat
     if config.training_contrastive.dataset == 'inat':
-        config.sampling.num_classes = 8142
+        config.sampling.num_class = 8142
 
         txt_train = f'iNaturalist18/iNaturalist18_train.txt'
         normalize = transforms.Normalize((0.466, 0.471, 0.380), (0.195, 0.194, 0.192))
 
     elif config.training_contrastive.dataset == 'imagenet':
-        config.sampling.num_classes = 1000
+        config.sampling.num_class = 1000
 
         txt_train = f'ImageNet_LT/ImageNet_LT_train.txt'
         # txt_val = f'ImageNet_LT/ImageNet_LT_val.txt'
@@ -660,7 +660,7 @@ def train_imagenet_inatural(rank, world_size, config, console):
     #     val_dataset, batch_size=config.training_contrastive.batch_size, shuffle=False,
     #     num_workers=config.training_contrastive.num_workers, pin_memory=True, sampler=val_sampler)
 
-    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_classes,
+    model = resnext.Model(name=config.training_contrastive.architecture_type, num_classes=config.sampling.num_class,
                           feat_dim=config.training_contrastive.feat_dim,
                           use_norm=config.training_contrastive.use_norm,
                           gray=config.training_contrastive.gray)
@@ -694,31 +694,34 @@ def train_imagenet_inatural(rank, world_size, config, console):
 
     # Loss criterion and optimizer
     cls_num_list = train_dataset.cls_num_list
+    class_frequencies = torch.tensor(cls_num_list, dtype=torch.float32)
+    class_frequencies = class_frequencies.to(device)
+
     config.cls_num = len(cls_num_list)
 
     if config.training_contrastive.loss == 'proco':
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoLoss(contrast_dim=config.training_contrastive.feat_dim,
                                   temperature=config.training_contrastive.temp,
-                                  num_classes=config.sampling.num_classes,
+                                  num_classes=config.sampling.num_class,
                                   device=device)
     elif config.training_contrastive.loss == 'procom':
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoMLoss(contrast_dim=config.training_contrastive.feat_dim,
                                    temperature=config.training_contrastive.temp,
-                                   num_classes=config.sampling.num_classes,
+                                   num_classes=config.sampling.num_class,
                                    max_modes=config.training_contrastive.max_modes,
                                    device=device)
     elif config.training_contrastive.loss == 'procoun':
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoUNLoss(contrast_dim=config.training_contrastive.feat_dim,
                                     temperature=config.training_contrastive.temp,
-                                    num_classes=config.sampling.num_classes,
+                                    num_classes=config.sampling.num_class,
                                     device=device)
     elif config.training_contrastive.loss == 'procos':
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoSLoss(contrast_dim=config.training_contrastive.feat_dim,
-                                   class_frequencies=torch.FloatTensor(cls_num_list),
+                                   class_frequencies=class_frequencies,
                                    temperature=config.training_contrastive.temp,
                                    num_classes=config.sampling.num_class,
                                    device=device)
@@ -904,7 +907,7 @@ def train_imagenet_inatural(rank, world_size, config, console):
         ce_loss_all = AverageMeter('CE_Loss', ':.4e')
         top1 = AverageMeter('Acc@1', ':6.2f')
 
-        total_logits = torch.empty((0, config.sampling.num_classes)).to(device)
+        total_logits = torch.empty((0, config.sampling.num_class)).to(device)
         total_labels = torch.empty(0, dtype=torch.long).to(device)
 
         with torch.no_grad():
