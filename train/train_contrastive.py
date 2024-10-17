@@ -715,6 +715,13 @@ def train_imagenet_inatural(rank, world_size, config, console):
                                     temperature=config.training_contrastive.temp,
                                     num_classes=config.sampling.num_classes,
                                     device=device)
+    elif config.training_contrastive.loss == 'procos':
+        criterion_ce = LogitAdjust(cls_num_list, device=device)
+        criterion_scl = ProCoSLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                   class_frequencies=cls_num_list,
+                                   temperature=config.training_contrastive.temp,
+                                   num_classes=config.sampling.num_class,
+                                   device=device)
 
     optimizer = torch.optim.SGD(model.parameters(), config.training_contrastive.learning_rate,
                                 momentum=config.training_contrastive.momentum,
