@@ -258,6 +258,7 @@ def train_uvp(rank, world_size, config, console):
     elif config.training_contrastive.loss == 'procoun':
         criterion_ce = LogitAdjust(class_counts, device=device)
         criterion_scl = ProCoUNLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                    class_frequencies=torch.FloatTensor(class_counts),
                                     temperature=config.training_contrastive.temp,
                                     num_classes=config.sampling.num_class,
                                     device=device)
@@ -715,6 +716,7 @@ def train_imagenet_inatural(rank, world_size, config, console):
     elif config.training_contrastive.loss == 'procoun':
         criterion_ce = LogitAdjust(cls_num_list, device=device)
         criterion_scl = ProCoUNLoss(contrast_dim=config.training_contrastive.feat_dim,
+                                    class_frequencies=class_frequencies,
                                     temperature=config.training_contrastive.temp,
                                     num_classes=config.sampling.num_class,
                                     device=device)

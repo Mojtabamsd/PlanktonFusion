@@ -186,7 +186,8 @@ class EstimatorCV():
 
 
 class ProCoUNLoss(nn.Module):
-    def __init__(self, contrast_dim, temperature=1.0, num_classes=1000, device='cuda:0', sampling_option='none'):
+    def __init__(self, contrast_dim, class_frequencies, temperature=1.0, num_classes=1000, device='cuda:0',
+                 sampling_option='none'):
         super(ProCoUNLoss, self).__init__()
         self.temperature = temperature
         self.num_classes = num_classes
@@ -195,6 +196,7 @@ class ProCoUNLoss(nn.Module):
         self.estimator_old = EstimatorCV(self.feature_num, num_classes, self.device)
         self.estimator = EstimatorCV(self.feature_num, num_classes, self.device)
         self.sampling_option = sampling_option
+        self.class_frequencies = class_frequencies
 
     def cal_weight_for_classes(self, cls_num_list):
         cls_num_list = torch.Tensor(cls_num_list).view(1, self.num_classes)
@@ -236,7 +238,7 @@ class ProCoUNLoss(nn.Module):
         logc = self.estimator_old.logc.detach()
         kappa = self.estimator_old.kappa.detach()
 
-        uncertainty_metric = 'cosine'  # kappa or cosine
+        uncertainty_metric = 'kappa'  # kappa or cosine
         if uncertainty_metric == 'cosine':
             class_prototypes = Ave_norm.unsqueeze(0)
             features_expanded = features.unsqueeze(1)
@@ -244,9 +246,29 @@ class ProCoUNLoss(nn.Module):
             uncertainty_per_batch = 1 - torch.clamp(cos_sim, -1.0, 1.0)
             uncertainty = uncertainty_per_batch.mean(dim=0)
         else:
-            normalized_kappa = torch.clamp((kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8), min=0.01, max=0.99)
-            # normalized_kappa = (kappa - kappa.min()) / (kappa.max() - kappa.min() + 1e-8)
-            uncertainty = 1 - normalized_kappa
+            # scale kappa
+            kappa_min = 1.0
+            kappa_max = 1e5
+            beta = 0.5
+
+            self.class_frequencies = self.class_frequencies.to(device)
+            N_y = self.class_frequencies
+            N_min = N_y.min()
+            N_max = N_y.max()
+
+            if N_max == N_min:
+                adjustment_factor = torch.ones_like(N_y)
+            else:
+                adjustment_factor = (1 - (N_y - N_min) / (N_max - N_min)).pow(beta)
+
+            adjusted_kappa = kappa_min + (kappa - kappa_min) * adjustment_factor
+            adjusted_kappa = torch.clamp(adjusted_kappa, min=kappa_min, max=kappa_max)
+
+            normalized_kappa = torch.clamp((adjusted_kappa - adjusted_kappa.min()) /
+                                           (adjusted_kappa.max() - adjusted_kappa.min() + 1e-8), min=0.01, max=0.99)
+
+            uncertainty = normalized_kappa
+
             # non-linear
             # uncertainty = 1 / (normalized_kappa + 1e-8)
 
